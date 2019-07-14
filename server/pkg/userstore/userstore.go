@@ -2,6 +2,7 @@ package userstore
 
 import (
 	"crypto/rand"
+	"regexp"
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/argon2"
@@ -35,15 +36,23 @@ type UserStore interface {
 var ErrAlreadyExists = errors.New("User already exists")
 var ErrDoesNotExist = errors.New("User does not exist")
 var ErrUsernameEmpty = errors.New("Username cannot be empty")
+var ErrUsernameInvalid = errors.New("Username contains invalid characters")
 var ErrPasswordEmpty = errors.New("Password cannot be empty")
 
 var ErrBlogAlreadyExists = errors.New("A blog with this slug already exists")
 var ErrBlogDoesNotExist = errors.New("Blog does not exist")
 var ErrBlogSlugEmpty = errors.New("Blog slug cannot be empty")
+var ErrBlogSlugInvalid = errors.New("Blog slug contains invalid characters")
+
+var validAlphanumericRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9\.\-_]+$`)
 
 func validateUser(user User, allowEmptyPassword bool) error {
 	if user.Username == "" {
 		return ErrUsernameEmpty
+	}
+
+	if !validAlphanumericRe.MatchString(user.Username) {
+		return ErrUsernameInvalid
 	}
 
 	if !allowEmptyPassword && user.Password == "" {
@@ -87,6 +96,10 @@ func hashPassword(password string, salt []byte) []byte {
 func validateBlog(blog Blog) error {
 	if blog.Slug == "" {
 		return ErrBlogSlugEmpty
+	}
+
+	if !validAlphanumericRe.MatchString(blog.Slug) {
+		return ErrBlogSlugInvalid
 	}
 
 	return nil
