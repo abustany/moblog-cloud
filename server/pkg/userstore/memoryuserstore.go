@@ -65,6 +65,7 @@ func (s *MemoryUserStore) GetUser(username string) (*User, error) {
 	record, exists := s.users[username]
 
 	if exists {
+		record.user.Password = ""
 		return &record.user, nil
 	} else {
 		return nil, nil
