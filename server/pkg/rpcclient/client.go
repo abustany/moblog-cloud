@@ -4,25 +4,25 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"sync/atomic"
 
 	"github.com/pkg/errors"
+
+	"github.com/abustany/moblog-cloud/pkg/idgenerator"
 )
 
 type Client struct {
-	url     string
-	lastUID uint64
+	url         string
+	idGenerator *idgenerator.StringIdGenerator
 
 	Client *http.Client
 }
 
 func New(url string) *Client {
-	return &Client{url, 1, nil}
+	return &Client{url, &idgenerator.StringIdGenerator{}, nil}
 }
 
 func (c *Client) Call(method string, params interface{}, result interface{}) error {
-	callID := strconv.FormatUint(atomic.AddUint64(&c.lastUID, 1), 10)
+	callID := c.idGenerator.Next()
 
 	call := struct {
 		ID     string        `json:"id"`
