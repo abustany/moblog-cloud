@@ -17,8 +17,10 @@ import (
 
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
 	"github.com/abustany/moblog-cloud/pkg/gitserver"
+	"github.com/abustany/moblog-cloud/pkg/jobs"
 	"github.com/abustany/moblog-cloud/pkg/testutils"
 	"github.com/abustany/moblog-cloud/pkg/userstore"
+	"github.com/abustany/moblog-cloud/pkg/workqueue"
 )
 
 func makeJarWithCookie(t *testing.T, serverURL string, cookie *http.Cookie) http.CookieJar {
@@ -46,6 +48,7 @@ type Context struct {
 	username       string
 	workDir        string
 	authCookieFile string
+	jobQueue       workqueue.Queue
 }
 
 func TestGitService(t *testing.T) {
@@ -64,7 +67,15 @@ func TestGitService(t *testing.T) {
 
 	const templateRepoDir = "testdata/repo-template"
 
-	gitServerHandler, err := gitserver.New(repositoriesDir, templateRepoDir, adminServer.URL)
+	jobQueue, err := workqueue.NewMemoryQueue()
+
+	if err != nil {
+		t.Fatalf("Error while creating job queue: %s", err)
+	}
+
+	defer jobQueue.Stop()
+
+	gitServerHandler, err := gitserver.New(repositoriesDir, templateRepoDir, adminServer.URL, jobQueue)
 
 	if err != nil {
 		t.Fatalf("Error while creating git server: %s", err)
@@ -125,6 +136,7 @@ func TestGitService(t *testing.T) {
 				username:       user.Username,
 				workDir:        workDir,
 				authCookieFile: authCookieFile,
+				jobQueue:       jobQueue,
 			}
 
 			f(t, ctx)
@@ -165,18 +177,19 @@ func testAuthentication(t *testing.T, ctx Context) {
 	}
 }
 
-func git(t *testing.T, args ...string) {
+func git(t *testing.T, args ...string) string {
 	gitPath, err := exec.LookPath("git")
 
 	if err != nil {
 		t.Fatalf("Cannot find git in PATH")
 	}
 
+	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer
 	gitCmd := exec.Command(gitPath, args...)
 	gitCmd.Env = []string{"GIT_TERMINAL_PROMPT=0"}
 	gitCmd.Stdin = nil
-	gitCmd.Stdout = nil
+	gitCmd.Stdout = &stdoutBuffer
 	gitCmd.Stderr = &stderrBuffer
 
 	t.Logf("Running git %v", args)
@@ -184,6 +197,8 @@ func git(t *testing.T, args ...string) {
 	if err := gitCmd.Run(); err != nil {
 		t.Fatalf("Git command failed. Stderr: %s", stderrBuffer.String())
 	}
+
+	return strings.TrimSpace(stdoutBuffer.String())
 }
 
 func testClone(t *testing.T, ctx Context) {
@@ -218,5 +233,33 @@ func testPush(t *testing.T, ctx Context) {
 	}
 
 	git(t, "-C", blogPath, "-c", "user.name=Tester", "-c", "user.email=tester@qa.org", "commit", "-m", "Change the README", "README")
+	localHead := git(t, "-C", blogPath, "rev-list", "-n1", "HEAD")
 	git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "push", "origin", "master")
+	remoteHead := strings.Split(git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "ls-remote", "origin", "HEAD"), "\t")[0]
+
+	if localHead != remoteHead {
+		t.Errorf("Unexpected remote HEAD, got %s, expected %s", remoteHead, localHead)
+	}
+
+	job, err := ctx.jobQueue.Pick(0)
+
+	if err != nil {
+		t.Errorf("Error while picking from job queue: %s", err)
+	}
+
+	if job == nil {
+		t.Errorf("Push did not trigger a job")
+	} else {
+		if data, ok := job.Data.(*jobs.RenderJob); !ok {
+			t.Errorf("Job data is not a RenderJob")
+		} else {
+			if data.Username != ctx.username {
+				t.Errorf("Unexpected job username, got %s, expected %s", data.Username, ctx.username)
+			}
+
+			if data.Repository != "my-blog" {
+				t.Errorf("Unexpected job repository name, got %s, expected my-blog", data.Repository)
+			}
+		}
+	}
 }

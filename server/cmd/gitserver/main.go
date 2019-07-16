@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/abustany/moblog-cloud/pkg/gitserver"
+	"github.com/abustany/moblog-cloud/pkg/workqueue"
 )
 
 var listenAddress = flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
@@ -28,7 +29,15 @@ func main() {
 		log.Fatalf("Missing option: -adminServer")
 	}
 
-	s, err := gitserver.New(*repositoryBase, *templateRepository, *adminServerURL)
+	jobQueue, err := workqueue.NewMemoryQueue()
+
+	if err != nil {
+		log.Fatalf("Error while creating job queue: %s", err)
+	}
+
+	defer jobQueue.Stop()
+
+	s, err := gitserver.New(*repositoryBase, *templateRepository, *adminServerURL, jobQueue)
 
 	if err != nil {
 		log.Fatalf("Error while creating gitserver: %s", err)

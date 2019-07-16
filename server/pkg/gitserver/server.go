@@ -22,7 +22,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
+	"github.com/abustany/moblog-cloud/pkg/jobs"
 	"github.com/abustany/moblog-cloud/pkg/middlewares"
+	"github.com/abustany/moblog-cloud/pkg/workqueue"
 )
 
 const (
@@ -37,6 +39,7 @@ type Server struct {
 	router             *mux.Router
 	adminClient        *adminserver.Client
 	adminServerURL     *url.URL
+	jobQueue           workqueue.Queue
 }
 
 type userSession struct {
@@ -95,7 +98,7 @@ func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSess
 	return &userSession{me.Username, blogNames}, nil
 }
 
-func New(baseDir, templateRepository, adminServerURL string) (*Server, error) {
+func New(baseDir, templateRepository, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
 	adminClient, err := adminserver.NewClient(adminServerURL)
 
 	if err != nil {
@@ -114,6 +117,7 @@ func New(baseDir, templateRepository, adminServerURL string) (*Server, error) {
 		router:             mux.NewRouter(),
 		adminClient:        adminClient,
 		adminServerURL:     adminServerURLParsed,
+		jobQueue:           jobQueue,
 	}
 
 	repoRouter := s.router.PathPrefix("/{" + urlVarUsername + ":" + validIDStringRE + "}/{" + urlVarRepository + ":" + validIDStringRE + "}").Subrouter()
@@ -328,6 +332,19 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("Error while doing %s for %s/%s: %s (stderr: %s)", serviceName, username, repository, err, stderr)
 		return
+	}
+
+	if serviceName == "receive-pack" {
+		const renderJobTTR = 10 * time.Minute
+
+		renderJob := jobs.RenderJob{
+			Username:   username,
+			Repository: repository,
+		}
+
+		if err := s.jobQueue.Post(&renderJob, renderJobTTR); err != nil {
+			log.Printf("Error while posting render job for %s/%s: %s", username, repository, err)
+		}
 	}
 }
 
