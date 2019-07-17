@@ -123,6 +123,8 @@ func New(options Options) (*Lock, error) {
 	}
 
 	go func() {
+		l.tick()
+
 		for range l.ticker.C {
 			l.tick()
 		}
