@@ -1,14 +1,17 @@
-.PHONY: first build migrate adminserver gitserver flushdb test
+.PHONY: first build migrate adminserver gitserver worker flushdb test
 
 first: build
 
-build: adminserver gitserver
+build: adminserver gitserver worker
 
 adminserver:
 	go build github.com/abustany/moblog-cloud/cmd/adminserver
 
 gitserver:
 	go build github.com/abustany/moblog-cloud/cmd/gitserver
+
+worker:
+	go build github.com/abustany/moblog-cloud/cmd/worker
 
 migrate: migrate-bin
 	@sh -c "[ -z \"$${DB_URL}\" ] && echo Set DB_URL environment variable to the Postgres URL before running this command && exit 1 || true"
