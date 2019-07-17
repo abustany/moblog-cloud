@@ -21,3 +21,5 @@ type Queue interface {
 }
 
 var ErrQueueFull = errors.New("Queue is full")
+
+var GroomInterval = 5 * time.Second

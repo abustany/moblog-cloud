@@ -9,8 +9,6 @@ import (
 
 const MemoryMaxPendingJobs = 1000
 
-var MemoryGroomInterval = 5 * time.Second
-
 type memoryEntryMetadata struct {
 	entry   *JobEntry
 	started time.Time
@@ -28,12 +26,12 @@ func NewMemoryQueue() (*MemoryQueue, error) {
 	q := &MemoryQueue{
 		idGenerator: &idgenerator.StringIdGenerator{},
 		pendingChan: make(chan *JobEntry, MemoryMaxPendingJobs),
-		groomTicker: time.NewTicker(MemoryGroomInterval),
+		groomTicker: time.NewTicker(GroomInterval),
 		metadata:    map[string]memoryEntryMetadata{},
 	}
 
 	go func() {
-		for _ = range q.groomTicker.C {
+		for range q.groomTicker.C {
 			q.groom()
 		}
 	}()

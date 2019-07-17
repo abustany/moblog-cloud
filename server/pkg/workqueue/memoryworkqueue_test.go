@@ -10,7 +10,7 @@ import (
 func TestMemoryQueue(t *testing.T) {
 	// Reduce groom interval at expense of CPU load so that tests don't take
 	// forever to run
-	workqueue.MemoryGroomInterval = 20 * time.Millisecond
+	workqueue.GroomInterval = 20 * time.Millisecond
 
 	q, err := workqueue.NewMemoryQueue()
 
