@@ -77,7 +77,9 @@ func testPickTimeout(t *testing.T, q workqueue.Queue) {
 		t.Errorf("Pick didn't sleep long enough")
 	}
 
-	if after.Sub(before) > 200*time.Millisecond {
+	// We need to set a long enough timeout here, since the Redis queue cannot
+	// wait less than one second
+	if after.Sub(before) > 5*time.Second {
 		t.Errorf("Pick slept too long")
 	}
 }
