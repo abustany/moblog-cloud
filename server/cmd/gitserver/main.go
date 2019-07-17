@@ -13,6 +13,7 @@ var listenAddress = flag.String("listen", "127.0.0.1:8080", "Address to listen o
 var repositoryBase = flag.String("repositoryBase", "", "Base path where user repositories are stored")
 var templateRepository = flag.String("templateRepository", "", "Path to the template repository for new repositories")
 var adminServerURL = flag.String("adminServer", "", "URL to the admin server")
+var redisJobQueueURL = flag.String("redisJobQueue", "", "URL to the Redis server to use for the job queue")
 
 func main() {
 	flag.Parse()
@@ -29,13 +30,26 @@ func main() {
 		log.Fatalf("Missing option: -adminServer")
 	}
 
-	jobQueue, err := workqueue.NewMemoryQueue()
+	var jobQueue workqueue.Queue
+	var err error
+
+	if *redisJobQueueURL == "" {
+		jobQueue, err = workqueue.NewMemoryQueue()
+
+		if err == nil {
+			defer jobQueue.(*workqueue.MemoryQueue).Stop()
+		}
+	} else {
+		jobQueue, err = workqueue.NewRedisQueue(*redisJobQueueURL)
+
+		if err == nil {
+			defer jobQueue.(*workqueue.RedisQueue).Stop()
+		}
+	}
 
 	if err != nil {
 		log.Fatalf("Error while creating job queue: %s", err)
 	}
-
-	defer jobQueue.Stop()
 
 	s, err := gitserver.New(*repositoryBase, *templateRepository, *adminServerURL, jobQueue)
 
