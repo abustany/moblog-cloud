@@ -111,9 +111,7 @@ func testTTR(t *testing.T, q workqueue.Queue) {
 
 	if entry == nil {
 		t.Errorf("Second pick returned a nil entry")
-	}
-
-	if err := q.Finish(entry); err != nil {
+	} else if err := q.Finish(entry); err != nil {
 		t.Errorf("Finish returned an error: %s", err)
 	}
 
