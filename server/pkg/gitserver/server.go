@@ -34,12 +34,11 @@ const (
 )
 
 type Server struct {
-	baseDir            string
-	templateRepository string
-	router             *mux.Router
-	adminClient        *adminserver.Client
-	adminServerURL     *url.URL
-	jobQueue           workqueue.Queue
+	baseDir        string
+	router         *mux.Router
+	adminClient    *adminserver.Client
+	adminServerURL *url.URL
+	jobQueue       workqueue.Queue
 }
 
 type userSession struct {
@@ -98,7 +97,7 @@ func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSess
 	return &userSession{me.Username, blogNames}, nil
 }
 
-func New(baseDir, templateRepository, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
+func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
 	adminClient, err := adminserver.NewClient(adminServerURL)
 
 	if err != nil {
@@ -112,12 +111,11 @@ func New(baseDir, templateRepository, adminServerURL string, jobQueue workqueue.
 	}
 
 	s := Server{
-		baseDir:            baseDir,
-		templateRepository: templateRepository,
-		router:             mux.NewRouter(),
-		adminClient:        adminClient,
-		adminServerURL:     adminServerURLParsed,
-		jobQueue:           jobQueue,
+		baseDir:        baseDir,
+		router:         mux.NewRouter(),
+		adminClient:    adminClient,
+		adminServerURL: adminServerURLParsed,
+		jobQueue:       jobQueue,
 	}
 
 	repoRouter := s.router.PathPrefix("/{" + urlVarUsername + ":" + validIDStringRE + "}/{" + urlVarRepository + ":" + validIDStringRE + "}").Subrouter()
@@ -151,8 +149,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func (s *Server) ensureRepository(ctx context.Context, session *userSession, repository string) error {
-	repoPath := s.repositoryPath(session.username, repository)
+func (s *Server) ensureRepository(ctx context.Context, username, repository string) error {
+	repoPath := s.repositoryPath(username, repository)
 
 	exists, err := isDir(repoPath)
 
@@ -164,15 +162,35 @@ func (s *Server) ensureRepository(ctx context.Context, session *userSession, rep
 		return nil
 	}
 
-	if err := os.MkdirAll(repoPath, 0700); err != nil {
+	return errors.Wrap(s.initNewRepository(ctx, repoPath), "Error while initializing a new repository")
+}
+
+func (s *Server) initNewRepository(ctx context.Context, path string) (err error) {
+	if err := os.MkdirAll(path, 0700); err != nil {
 		return errors.Wrap(err, "Error while creating repository directory")
 	}
 
-	if stderr, err := runGit(ctx, nil, nil, "clone", "--bare", s.templateRepository, repoPath); err != nil {
-		return errors.Wrapf(err, "Error while cloning template repository (stderr: %s)", stderr)
+	defer func() {
+		if err != nil {
+			os.RemoveAll(path)
+		}
+	}()
+
+	if stderr, err := runGit(ctx, nil, nil, "init", "--bare", path); err != nil {
+		return errors.Wrapf(err, "Error while running git init (stderr: %s)", stderr)
 	}
 
 	return nil
+}
+
+func blogExists(blogs []string, blog string) bool {
+	for _, b := range blogs {
+		if b == blog {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *Server) withValidRepository(handler http.Handler) http.Handler {
@@ -191,9 +209,8 @@ func (s *Server) withValidRepository(handler http.Handler) http.Handler {
 			return
 		}
 
-		if err := s.ensureRepository(r.Context(), session, repository); err != nil {
-			log.Printf("Error while ensuring that repository %s/%s exists: %s", username, repository, err)
-			w.WriteHeader(http.StatusInternalServerError)
+		if !blogExists(session.blogs, repository) {
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
@@ -212,7 +229,7 @@ func removeGitRepositorySuffix(repository string) string {
 }
 
 func (s *Server) repositoryPath(username, repository string) string {
-	return path.Join(s.baseDir, username, removeGitRepositorySuffix(repository))
+	return path.Join(s.baseDir, username, repository)
 }
 
 func writeGitPacket(w io.Writer, s string) error {
@@ -241,7 +258,7 @@ func isDir(path string) (bool, error) {
 
 func getRequestUsernameRepository(r *http.Request) (string, string) {
 	vars := mux.Vars(r)
-	return vars[urlVarUsername], vars[urlVarRepository]
+	return vars[urlVarUsername], removeGitRepositorySuffix(vars[urlVarRepository])
 }
 
 func runGit(ctx context.Context, stdin io.Reader, stdout io.Writer, args ...string) (stderr string, err error) {
@@ -322,6 +339,17 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 
 	username, repository := getRequestUsernameRepository(r)
 	repoPath := s.repositoryPath(username, repository)
+	isPush := serviceName == "receive-pack"
+
+	if isPush {
+		// We init the repository lazily on first push. This first push comes in
+		// theory from a queue worker.
+		if err := s.ensureRepository(r.Context(), username, repository); err != nil {
+			log.Printf("Error while ensuring that repository %s/%s exists: %s", username, repository, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/x-git-"+serviceName+"-result")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -334,7 +362,7 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 		return
 	}
 
-	if serviceName == "receive-pack" {
+	if isPush {
 		const renderJobTTR = 10 * time.Minute
 
 		renderJob := jobs.RenderJob{

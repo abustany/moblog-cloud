@@ -15,6 +15,8 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
+	"github.com/pkg/errors"
+
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
 	"github.com/abustany/moblog-cloud/pkg/gitserver"
 	"github.com/abustany/moblog-cloud/pkg/jobs"
@@ -65,8 +67,6 @@ func TestGitService(t *testing.T) {
 
 	defer os.RemoveAll(repositoriesDir)
 
-	const templateRepoDir = "testdata/repo-template"
-
 	jobQueue, err := workqueue.NewMemoryQueue()
 
 	if err != nil {
@@ -75,7 +75,7 @@ func TestGitService(t *testing.T) {
 
 	defer jobQueue.Stop()
 
-	gitServerHandler, err := gitserver.New(repositoriesDir, templateRepoDir, adminServer.URL, jobQueue)
+	gitServerHandler, err := gitserver.New(repositoriesDir, adminServer.URL, jobQueue)
 
 	if err != nil {
 		t.Fatalf("Error while creating git server: %s", err)
@@ -159,7 +159,7 @@ func testAuthentication(t *testing.T, ctx Context) {
 
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusNotFound {
 		t.Errorf("Unexpected HTTP status code for a non-existing repository: %d (expected 200)", res.StatusCode)
 	}
 
@@ -177,7 +177,7 @@ func testAuthentication(t *testing.T, ctx Context) {
 	}
 }
 
-func git(t *testing.T, args ...string) string {
+func gitErr(t *testing.T, args ...string) (string, error) {
 	gitPath, err := exec.LookPath("git")
 
 	if err != nil {
@@ -195,10 +195,20 @@ func git(t *testing.T, args ...string) string {
 	t.Logf("Running git %v", args)
 
 	if err := gitCmd.Run(); err != nil {
-		t.Fatalf("Git command failed. Stderr: %s", stderrBuffer.String())
+		return "", errors.Errorf("Git command failed. Stderr: %s", stderrBuffer.String())
 	}
 
-	return strings.TrimSpace(stdoutBuffer.String())
+	return strings.TrimSpace(stdoutBuffer.String()), nil
+}
+
+func git(t *testing.T, args ...string) string {
+	stdout, err := gitErr(t, args...)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return stdout
 }
 
 func testClone(t *testing.T, ctx Context) {
@@ -214,14 +224,16 @@ func testClone(t *testing.T, ctx Context) {
 	blogURL := ctx.gitServerURL + "/" + ctx.username + "/" + blog.Slug
 	blogPath := path.Join(ctx.workDir, blog.Slug)
 
+	if _, err := gitErr(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL+"-doesntexist", blogPath); err == nil {
+		t.Errorf("Expected an error when cloning a non existing blog")
+	}
+
 	git(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL, blogPath)
 
-	if readme, err := ioutil.ReadFile(path.Join(blogPath, "README")); err != nil {
-		t.Errorf("Error while reading README: %s", err)
-	} else {
-		if !strings.Contains(string(readme), "Welcome to your new blog!") {
-			t.Errorf("Unexpected README contents: %s", string(readme))
-		}
+	refs := git(t, "-C", blogPath, "show-ref")
+
+	if refs != "" {
+		t.Errorf("Clone repository should be empty")
 	}
 }
 

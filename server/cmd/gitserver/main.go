@@ -22,10 +22,6 @@ func main() {
 		log.Fatalf("Missing option: -repositoryBase")
 	}
 
-	if *templateRepository == "" {
-		log.Fatalf("Missing option: -templateRepository")
-	}
-
 	if *adminServerURL == "" {
 		log.Fatalf("Missing option: -adminServer")
 	}
@@ -51,7 +47,7 @@ func main() {
 		log.Fatalf("Error while creating job queue: %s", err)
 	}
 
-	s, err := gitserver.New(*repositoryBase, *templateRepository, *adminServerURL, jobQueue)
+	s, err := gitserver.New(*repositoryBase, *adminServerURL, jobQueue)
 
 	if err != nil {
 		log.Fatalf("Error while creating gitserver: %s", err)
