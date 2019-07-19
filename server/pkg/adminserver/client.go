@@ -126,7 +126,12 @@ func (c *Client) UpdateBlog(blog userstore.Blog) error {
 }
 
 func (c *Client) GetBlog(slug string) (user userstore.Blog, err error) {
-	err = c.client.Call("Blogs.Get", &GetBlogArgs{slug}, &user)
+	err = c.client.Call("Blogs.Get", &GetBlogArgs{Slug: slug}, &user)
+	return
+}
+
+func (c *Client) GetUserBlog(username, slug string) (user userstore.Blog, err error) {
+	err = c.client.Call("Blogs.Get", &GetBlogArgs{Username: username, Slug: slug}, &user)
 	return
 }
 

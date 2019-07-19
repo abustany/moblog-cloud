@@ -190,20 +190,29 @@ func (s *blogsService) Update(r *http.Request, blog *userstore.Blog, reply *Upda
 }
 
 type GetBlogArgs struct {
-	Slug string
+	Username string
+	Slug     string
 }
 
 func (s *blogsService) Get(r *http.Request, args *GetBlogArgs, reply *userstore.Blog) error {
-	session := SessionFromContext(r.Context())
+	var username string
 
-	if session == nil {
-		return errRequireAuthentication
+	if args.Username == "" {
+		session := SessionFromContext(r.Context())
+
+		if session == nil {
+			return errRequireAuthentication
+		}
+
+		username = session.Username
+	} else {
+		username = args.Username
 	}
 
-	blog, err := s.store.GetBlog(session.Username, args.Slug)
+	blog, err := s.store.GetBlog(username, args.Slug)
 
 	if err != nil {
-		log.Printf("Error retrieving blog %s for user %s: %s", args.Slug, session.Username, err)
+		log.Printf("Error retrieving blog %s for user %s: %s", args.Slug, username, err)
 		return err
 	}
 
