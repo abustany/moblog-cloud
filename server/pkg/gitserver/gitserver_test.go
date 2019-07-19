@@ -1,21 +1,17 @@
 package gitserver_test
 
 import (
-	"bytes"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 	"testing"
 
 	"golang.org/x/net/publicsuffix"
-
-	"github.com/pkg/errors"
 
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
 	"github.com/abustany/moblog-cloud/pkg/gitserver"
@@ -166,40 +162,6 @@ func testAuthentication(t *testing.T, ctx Context) {
 	}
 }
 
-func gitErr(t *testing.T, args ...string) (string, error) {
-	gitPath, err := exec.LookPath("git")
-
-	if err != nil {
-		t.Fatalf("Cannot find git in PATH")
-	}
-
-	var stdoutBuffer bytes.Buffer
-	var stderrBuffer bytes.Buffer
-	gitCmd := exec.Command(gitPath, args...)
-	gitCmd.Env = []string{"GIT_TERMINAL_PROMPT=0"}
-	gitCmd.Stdin = nil
-	gitCmd.Stdout = &stdoutBuffer
-	gitCmd.Stderr = &stderrBuffer
-
-	t.Logf("Running git %v", args)
-
-	if err := gitCmd.Run(); err != nil {
-		return "", errors.Errorf("Git command failed. Stderr: %s", stderrBuffer.String())
-	}
-
-	return strings.TrimSpace(stdoutBuffer.String()), nil
-}
-
-func git(t *testing.T, args ...string) string {
-	stdout, err := gitErr(t, args...)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return stdout
-}
-
 func testClone(t *testing.T, ctx Context) {
 	blog := userstore.Blog{
 		Slug:        "my-blog",
@@ -213,11 +175,11 @@ func testClone(t *testing.T, ctx Context) {
 	blogURL := ctx.gitServerURL + "/" + ctx.username + "/" + blog.Slug
 	blogPath := path.Join(ctx.workDir, blog.Slug)
 
-	if _, err := gitErr(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL+"-doesntexist", blogPath); err == nil {
+	if _, err := testutils.GitErr(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL+"-doesntexist", blogPath); err == nil {
 		t.Errorf("Expected an error when cloning a non existing blog")
 	}
 
-	git(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL, blogPath)
+	testutils.Git(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL, blogPath)
 }
 
 func testPush(t *testing.T, ctx Context) {
@@ -227,11 +189,11 @@ func testPush(t *testing.T, ctx Context) {
 		t.Fatalf("Error while writing README: %s", err)
 	}
 
-	git(t, "-C", blogPath, "add", "README")
-	git(t, "-C", blogPath, "-c", "user.name=Tester", "-c", "user.email=tester@qa.org", "commit", "-m", "Change the README")
-	localHead := git(t, "-C", blogPath, "rev-list", "-n1", "HEAD")
-	git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "push", "origin", "master")
-	remoteHead := strings.Split(git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "ls-remote", "origin", "HEAD"), "\t")[0]
+	testutils.Git(t, "-C", blogPath, "add", "README")
+	testutils.Git(t, "-C", blogPath, "-c", "user.name=Tester", "-c", "user.email=tester@qa.org", "commit", "-m", "Change the README")
+	localHead := testutils.Git(t, "-C", blogPath, "rev-list", "-n1", "HEAD")
+	testutils.Git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "push", "origin", "master")
+	remoteHead := strings.Split(testutils.Git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "ls-remote", "origin", "HEAD"), "\t")[0]
 
 	if localHead != remoteHead {
 		t.Errorf("Unexpected remote HEAD, got %s, expected %s", remoteHead, localHead)
