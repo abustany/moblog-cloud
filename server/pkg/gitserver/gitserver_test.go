@@ -114,10 +114,7 @@ func TestGitService(t *testing.T) {
 	// Store the auth cookie as a text file so that git can use it later
 
 	authCookieFile := path.Join(workDir, "auth_cookie.txt")
-
-	if err := ioutil.WriteFile(authCookieFile, []byte("Set-Cookie: "+authCookie.String()+"\n"), 0600); err != nil {
-		t.Fatalf("Error while writing auth cookie to file: %s", err)
-	}
+	testutils.SaveAdminClientAuthCookieToFile(t, adminClient, authCookieFile)
 
 	withContext := func(f func(*testing.T, Context)) func(*testing.T) {
 		return func(t *testing.T) {

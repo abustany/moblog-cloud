@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -49,4 +50,16 @@ func NewAdminServer(t *testing.T) *adminserver.Server {
 	}
 
 	return adminserver.New(generateSecureCookie(t), userStore, sessionStore)
+}
+
+func SaveAdminClientAuthCookieToFile(t *testing.T, client *adminserver.Client, path string) {
+	authCookie, err := client.AuthCookie()
+
+	if err != nil {
+		t.Fatalf("Error while retrieving auth cookie from admin client: %s", err)
+	}
+
+	if err := ioutil.WriteFile(path, []byte("Set-Cookie: "+authCookie.String()+"\n"), 0600); err != nil {
+		t.Fatalf("Error while writing auth cookie to file: %s", err)
+	}
 }
