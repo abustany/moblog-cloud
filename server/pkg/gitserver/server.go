@@ -64,15 +64,14 @@ func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSess
 
 	jar.SetCookies(adminServerURL, []*http.Cookie{authCookie})
 
-	httpClient := &http.Client{
-		Timeout: 10 * time.Second,
-		Jar:     jar,
-	}
-
-	adminClient, err := adminserver.NewClientWithOptions(adminServerURL.String(), httpClient)
+	adminClient, err := adminserver.NewClient(adminServerURL.String())
 
 	if err != nil {
 		return nil, errors.Wrap(err, "Error while creating admin server client")
+	}
+
+	if err := adminClient.SetAuthCookie(authCookie); err != nil {
+		return nil, errors.Wrap(err, "Error while setting auth cookie")
 	}
 
 	me, err := adminClient.Whoami()

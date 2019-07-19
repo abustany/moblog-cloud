@@ -32,10 +32,6 @@ func NewClient(url string) (*Client, error) {
 		Jar:     jar,
 	}
 
-	return NewClientWithOptions(url, httpClient)
-}
-
-func NewClientWithOptions(url string, httpClient *http.Client) (*Client, error) {
 	rpcClient := rpcclient.New(url)
 	rpcClient.Client = httpClient
 
@@ -56,6 +52,22 @@ func (c *Client) AuthCookie() (*http.Cookie, error) {
 	}
 
 	return nil, nil
+}
+
+func (c *Client) SetAuthCookie(cookie *http.Cookie) error {
+	if cookie.Name != AuthCookieName {
+		return errors.New("Invalid cookie name")
+	}
+
+	parsedURL, err := url.Parse(c.url)
+
+	if err != nil {
+		return errors.Wrap(err, "Error while parsing server url")
+	}
+
+	c.client.Client.Jar.SetCookies(parsedURL, []*http.Cookie{cookie})
+
+	return nil
 }
 
 func (c *Client) Login(username, password string) error {
