@@ -59,12 +59,7 @@ func TestGitService(t *testing.T) {
 	adminServer := httptest.NewServer(testutils.NewAdminServer(t))
 	defer adminServer.Close()
 
-	repositoriesDir, err := ioutil.TempDir("", "gitserver-repositories")
-
-	if err != nil {
-		t.Fatalf("Error while creating git directory: %s", err)
-	}
-
+	repositoriesDir := testutils.TempDir(t, "gitserver-repositories")
 	defer os.RemoveAll(repositoriesDir)
 
 	jobQueue, err := workqueue.NewMemoryQueue()
@@ -113,11 +108,8 @@ func TestGitService(t *testing.T) {
 		Jar: makeJarWithCookie(t, adminServer.URL, authCookie),
 	}
 
-	workDir, err := ioutil.TempDir("", "gitserver-workdir")
-
-	if err != nil {
-		t.Fatalf("Error while creating work directory: %s", err)
-	}
+	workDir := testutils.TempDir(t, "gitserver-workdir")
+	defer os.RemoveAll(workDir)
 
 	// Store the auth cookie as a text file so that git can use it later
 
