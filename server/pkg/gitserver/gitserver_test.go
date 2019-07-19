@@ -221,12 +221,6 @@ func testClone(t *testing.T, ctx Context) {
 	}
 
 	git(t, "-c", "http.cookieFile="+ctx.authCookieFile, "clone", blogURL, blogPath)
-
-	refs := git(t, "-C", blogPath, "show-ref")
-
-	if refs != "" {
-		t.Errorf("Clone repository should be empty")
-	}
 }
 
 func testPush(t *testing.T, ctx Context) {
@@ -236,7 +230,8 @@ func testPush(t *testing.T, ctx Context) {
 		t.Fatalf("Error while writing README: %s", err)
 	}
 
-	git(t, "-C", blogPath, "-c", "user.name=Tester", "-c", "user.email=tester@qa.org", "commit", "-m", "Change the README", "README")
+	git(t, "-C", blogPath, "add", "README")
+	git(t, "-C", blogPath, "-c", "user.name=Tester", "-c", "user.email=tester@qa.org", "commit", "-m", "Change the README")
 	localHead := git(t, "-C", blogPath, "rev-list", "-n1", "HEAD")
 	git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "push", "origin", "master")
 	remoteHead := strings.Split(git(t, "-C", blogPath, "-c", "http.cookieFile="+ctx.authCookieFile, "ls-remote", "origin", "HEAD"), "\t")[0]

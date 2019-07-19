@@ -205,6 +205,15 @@ func (s *Server) withValidRepository(handler http.Handler) http.Handler {
 			return
 		}
 
+		// We init the repository lazily on first access.
+		if err := s.ensureRepository(r.Context(), username, repository); err != nil {
+			log.Printf("Error while ensuring that repository %s/%s exists: %s", username, repository, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), sessionKey, session))
+
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -331,16 +340,6 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 	username, repository := getRequestUsernameRepository(r)
 	repoPath := s.repositoryPath(username, repository)
 	isPush := serviceName == "receive-pack"
-
-	if isPush {
-		// We init the repository lazily on first push. This first push comes in
-		// theory from a queue worker.
-		if err := s.ensureRepository(r.Context(), username, repository); err != nil {
-			log.Printf("Error while ensuring that repository %s/%s exists: %s", username, repository, err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
 
 	w.Header().Set("Content-Type", "application/x-git-"+serviceName+"-result")
 	w.Header().Set("Cache-Control", "no-cache")
