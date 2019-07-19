@@ -41,9 +41,16 @@ type Server struct {
 }
 
 type userSession struct {
-	username string
-	blogs    []string
+	authCookie *http.Cookie
+	username   string
+	blogs      []string
 }
+
+type contextKey int
+
+const (
+	sessionKey contextKey = iota
+)
 
 func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSession, error) {
 	authCookie, err := r.Cookie(adminserver.AuthCookieName)
@@ -92,7 +99,15 @@ func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSess
 		blogNames[i] = blog.Slug
 	}
 
-	return &userSession{me.Username, blogNames}, nil
+	return &userSession{authCookie, me.Username, blogNames}, nil
+}
+
+func sessionFromContext(ctx context.Context) *userSession {
+	if value := ctx.Value(sessionKey); value != nil {
+		return value.(*userSession)
+	}
+
+	return nil
 }
 
 func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
@@ -355,8 +370,15 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 	if isPush {
 		const renderJobTTR = 10 * time.Minute
 
+		session := sessionFromContext(r.Context())
+
+		if session == nil {
+			panic("No session on push request")
+		}
+
 		renderJob := jobs.RenderJob{
-			Username:   username,
+			Username:   session.username,
+			AuthCookie: session.authCookie.String(),
 			Repository: repository,
 		}
 
