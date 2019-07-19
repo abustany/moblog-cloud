@@ -36,7 +36,6 @@ const (
 type Server struct {
 	baseDir        string
 	router         *mux.Router
-	adminClient    *adminserver.Client
 	adminServerURL *url.URL
 	jobQueue       workqueue.Queue
 }
@@ -98,12 +97,6 @@ func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSess
 }
 
 func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
-	adminClient, err := adminserver.NewClient(adminServerURL)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Error while creating admin server client")
-	}
-
 	adminServerURLParsed, err := url.Parse(adminServerURL)
 
 	if err != nil {
@@ -113,7 +106,6 @@ func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, err
 	s := Server{
 		baseDir:        baseDir,
 		router:         mux.NewRouter(),
-		adminClient:    adminClient,
 		adminServerURL: adminServerURLParsed,
 		jobQueue:       jobQueue,
 	}
