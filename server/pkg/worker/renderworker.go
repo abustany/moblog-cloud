@@ -4,19 +4,27 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"gocloud.dev/blob"
 
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
 	"github.com/abustany/moblog-cloud/pkg/jobs"
 	"github.com/abustany/moblog-cloud/pkg/userstore"
 )
+
+const blogDirectory = "blog"
+const themeDirectory = "theme"
+const resultDirectory = "html"
 
 func (w *Worker) renderBlog(ctx context.Context, job *jobs.RenderJob) error {
 	adminClient, err := adminserver.NewClient(w.adminServerURL)
@@ -53,6 +61,10 @@ func (w *Worker) renderBlog(ctx context.Context, job *jobs.RenderJob) error {
 
 	if err := w.runHugo(ctx, configFilePath); err != nil {
 		return errors.Wrap(err, "Error while running Hugo")
+	}
+
+	if err := w.uploadHTMLFiles(ctx, job.Username, blog.Slug); err != nil {
+		return errors.Wrap(err, "Error while uploading generated files")
 	}
 
 	return nil
@@ -158,6 +170,61 @@ func (w *Worker) runHugo(ctx context.Context, configFilePath string) error {
 
 	if err := hugoCmd.Run(); err != nil {
 		return errors.Wrapf(err, "Hugo returned an error (stderr: %s)", strings.TrimSpace(stderrBuffer.String()))
+	}
+
+	return nil
+}
+
+func (w *Worker) uploadHTMLFiles(ctx context.Context, username, slug string) error {
+	sourceDir := path.Join(w.workDir, resultDirectory)
+	bucket, err := blob.OpenBucket(ctx, w.blogOutputURL)
+
+	if err != nil {
+		return errors.Wrap(err, "Error while opening bucket")
+	}
+
+	copyFunc := func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		key := path.Join(username, slug, p[len(sourceDir):])
+
+		if info.IsDir() {
+			return nil // there are no directories in blob stores
+		} else if info.Mode().IsRegular() {
+			err = uploadFile(ctx, bucket, key, p)
+		} else {
+			err = errors.Errorf("Don't know how to copy %s: unknown file type", p)
+		}
+
+		return err
+	}
+
+	return errors.Wrap(filepath.Walk(sourceDir, copyFunc), "Error while copying files")
+}
+
+func uploadFile(ctx context.Context, bucket *blob.Bucket, key, srcPath string) (err error) {
+	srcFd, err := os.OpenFile(srcPath, os.O_RDONLY, 0)
+
+	if err != nil {
+		return errors.Wrap(err, "Error while opening source file")
+	}
+
+	defer srcFd.Close()
+
+	writer, err := bucket.NewWriter(ctx, key, nil)
+
+	if err != nil {
+		return errors.Wrap(err, "Error while creating writer")
+	}
+
+	if _, err = io.Copy(writer, srcFd); err != nil {
+		return errors.Wrap(err, "Error while copying file data")
+	}
+
+	if err = errors.Wrap(writer.Close(), "Error while finalizing upload"); err != nil {
+		return errors.Wrap(err, "Error while finalizing upload")
 	}
 
 	return nil

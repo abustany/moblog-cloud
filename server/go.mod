@@ -9,11 +9,12 @@ require (
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/lib/pq v1.0.0
+	github.com/lib/pq v1.1.0
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/satori/go.uuid v1.2.0
+	gocloud.dev v0.15.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6
 )

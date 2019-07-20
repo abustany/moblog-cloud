@@ -26,20 +26,18 @@ type Worker struct {
 	gitServerURL       string
 	workDir            string
 	themeRepositoryURL string
+	blogOutputURL      string
 	closeChannel       chan chan struct{}
 }
 
-const blogDirectory = "blog"
-const themeDirectory = "theme"
-const resultDirectory = "html"
-
-func New(queue workqueue.Queue, adminServerURL, gitServerURL, workDir, themeRepositoryURL string) (*Worker, error) {
+func New(queue workqueue.Queue, adminServerURL, gitServerURL, workDir, themeRepositoryURL, blogOutputURL string) (*Worker, error) {
 	w := &Worker{
 		queue:              queue,
 		adminServerURL:     adminServerURL,
 		gitServerURL:       gitServerURL,
 		workDir:            workDir,
 		themeRepositoryURL: themeRepositoryURL,
+		blogOutputURL:      blogOutputURL,
 		closeChannel:       make(chan chan struct{}),
 	}
 

@@ -11,6 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	_ "gocloud.dev/blob/fileblob"
+
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
 	"github.com/abustany/moblog-cloud/pkg/gitserver"
 	"github.com/abustany/moblog-cloud/pkg/testutils"
@@ -54,7 +56,10 @@ func TestRenderBlog(t *testing.T) {
 		t.Fatalf("Error while getting blog theme path: %s", err)
 	}
 
-	w, err := worker.New(queue, adminServer.URL, gitServer.URL, workDir, "file://"+themesDirectory)
+	destDir := testutils.TempDir(t, "worker-destdir")
+	defer os.RemoveAll(destDir)
+
+	w, err := worker.New(queue, adminServer.URL, gitServer.URL, workDir, "file://"+themesDirectory, "file://"+destDir)
 
 	if err != nil {
 		t.Fatalf("Error creating worker: %s", err)
@@ -122,8 +127,10 @@ Hello world!
 	testutils.Git(t, "-C", blogDirectory, "-c", "user.name=Renderer", "-c", "user.email=renderer@qa.org", "commit", "-m", "Commit first post")
 	testutils.Git(t, "-c", "http.cookieFile="+authCookieFile, "-C", blogDirectory, "push", blogURL, "master")
 
-	if err := waitForFile(path.Join(workDir, "html", "index.html"), 3*time.Second); err != nil {
-		t.Fatalf("Error while waiting for index.html to be produced: %s", err)
+	indexHTMLPath := path.Join(destDir, user.Username, blog.Slug, "index.html")
+
+	if err := waitForFile(indexHTMLPath, 3*time.Second); err != nil {
+		t.Fatalf("Error while waiting for %s to be produced: %s", indexHTMLPath, err)
 	}
 }
 
