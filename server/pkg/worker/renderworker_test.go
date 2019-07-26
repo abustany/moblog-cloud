@@ -69,6 +69,10 @@ func TestRenderBlog(t *testing.T) {
 
 	adminClient, err := adminserver.NewClient(adminServer.URL)
 
+	if err != nil {
+		t.Fatalf("Error while creating admin client: %s", err)
+	}
+
 	user := userstore.User{
 		Username: "renderer",
 		Password: "don't tell",

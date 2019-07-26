@@ -52,6 +52,10 @@ func migrateSchema(t *testing.T, dbURL string) {
 
 	migration, err := migrate.New("file://"+migrationsPath, dbURL)
 
+	if err != nil {
+		t.Fatalf("Error while initializing migration: %s", err)
+	}
+
 	if err := migration.Up(); err != nil {
 		if err.Error() != "no change" {
 			t.Fatalf("Error while setting up schema: %s", err)
