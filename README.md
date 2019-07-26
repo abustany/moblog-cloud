@@ -1,5 +1,7 @@
 # Moblog cloud
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/abustany/moblog-cloud)](https://goreportcard.com/report/github.com/abustany/moblog-cloud)
+
 This is the "platformization" of a homebrewd blogging system I've been using
 while traveling over the past few years [1], to take it from a couple of
 hand-crafted bash scripts to something more robust.
