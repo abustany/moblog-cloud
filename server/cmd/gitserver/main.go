@@ -11,7 +11,6 @@ import (
 
 var listenAddress = flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
 var repositoryBase = flag.String("repositoryBase", "", "Base path where user repositories are stored")
-var templateRepository = flag.String("templateRepository", "", "Path to the template repository for new repositories")
 var adminServerURL = flag.String("adminServer", "", "URL to the admin server")
 var redisJobQueueURL = flag.String("redisJobQueue", "", "URL to the Redis server to use for the job queue")
 
