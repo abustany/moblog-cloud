@@ -46,10 +46,15 @@ func New(queue workqueue.Queue, adminServerURL, gitServerURL, workDir, themeRepo
 	return w, nil
 }
 
+func (w *Worker) Wait() {
+	<-w.closeChannel
+}
+
 func (w *Worker) Stop() {
 	ack := make(chan struct{})
 	w.closeChannel <- ack
 	<-ack
+	close(w.closeChannel)
 }
 
 func (w *Worker) consumeJobs() {

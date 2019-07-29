@@ -59,4 +59,6 @@ func main() {
 	}
 
 	defer worker.Stop()
+
+	worker.Wait()
 }
