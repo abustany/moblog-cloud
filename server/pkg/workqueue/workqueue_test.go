@@ -44,6 +44,11 @@ func testPostPick(t *testing.T, q workqueue.Queue) {
 	if entry, err := q.Pick(1 * time.Millisecond); err != nil {
 		t.Fatalf("Picking a posted job failed: %s", err)
 	} else {
+		if entry == nil {
+			t.Errorf("Didn't pick any job")
+			return
+		}
+
 		if str, ok := entry.Data.(string); !ok || str != data {
 			t.Errorf("Unexpected job data, got %v, expected %v", entry.Data, data)
 		}
@@ -155,6 +160,11 @@ func testPostAfterPick(t *testing.T, q workqueue.Queue) {
 	case <-time.After(1 * time.Second):
 		t.Errorf("Timeout waiting for result")
 	case res := <-result:
+		if res == nil {
+			t.Errorf("Didn't pick any job")
+			return
+		}
+
 		if receivedData, ok := res.Data.(string); !ok || receivedData != data {
 			t.Errorf("Unexpected Pick result, expected %v, got %v", data, receivedData)
 		}
