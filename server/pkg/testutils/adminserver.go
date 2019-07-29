@@ -49,7 +49,7 @@ func NewAdminServer(t *testing.T) *adminserver.Server {
 		t.Fatalf("Error while creating session store")
 	}
 
-	return adminserver.New(generateSecureCookie(t), userStore, sessionStore)
+	return adminserver.New("", generateSecureCookie(t), userStore, sessionStore)
 }
 
 func SaveAdminClientAuthCookieToFile(t *testing.T, client *adminserver.Client, path string) {
