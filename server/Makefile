@@ -13,14 +13,16 @@ gitserver:
 worker:
 	go build github.com/abustany/moblog-cloud/cmd/worker
 
-migrate: migrate-bin
+migrate: tools/migrate-bin
 	@sh -c "[ -z \"$${DB_URL}\" ] && echo Set DB_URL environment variable to the Postgres URL before running this command && exit 1 || true"
-	./migrate-bin -database "${DB_URL}" -path sql up
+	./tools/migrate-bin -database "${DB_URL}" -path sql up
 
-migrate-bin:
+tools/migrate-bin:
 	@echo "Downloading migrate"
-	curl -L https://github.com/golang-migrate/migrate/releases/download/v4.4.0/migrate.linux-amd64.tar.gz | tar xz
-	mv migrate.linux-amd64 $@
+	mkdir -p tools && \
+	cd tools && \
+	curl -L https://github.com/golang-migrate/migrate/releases/download/v4.4.0/migrate.linux-amd64.tar.gz | tar xz && \
+	mv migrate.linux-amd64 migrate-bin
 
 flushdb:
 	@sh -c "[ -z \"$${DB_URL}\" ] && echo Set DB_URL environment variable to the Postgres URL before running this command && exit 1 || true"
