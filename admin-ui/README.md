@@ -1,4 +1,10 @@
-# admin-ui
+# Admin UI for Moblog
+
+A simple Vue webapp used by users to register a profile and create their blogs.
+The actual publishing happens by pushing content to the blogs, it is currently
+not possible to edit posts with this app.
+
+This is a standard vue-cli app, so the usual commands apply.
 
 ## Project setup
 ```
