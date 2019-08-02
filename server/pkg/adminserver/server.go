@@ -266,6 +266,8 @@ func (s *blogsService) Delete(r *http.Request, args *DeleteBlogArgs, reply *Dele
 		return err
 	}
 
+	log.Printf("Deleted blog %s for user %s", args.Slug, session.Username)
+
 	return nil
 }
 
