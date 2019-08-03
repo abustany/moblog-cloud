@@ -2,6 +2,7 @@ package adminserver_test
 
 import (
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -269,6 +270,20 @@ func testDeleteBlog(t *testing.T, c *adminserver.Client) {
 	}
 }
 
+type SortBySlug []userstore.Blog
+
+func (l SortBySlug) Len() int {
+	return len(l)
+}
+
+func (l SortBySlug) Swap(i, j int) {
+	l[j], l[i] = l[i], l[j]
+}
+
+func (l SortBySlug) Less(i, j int) bool {
+	return l[i].Slug < l[j].Slug
+}
+
 func testListBlogs(t *testing.T, c *adminserver.Client) {
 	if blogs, err := c.ListBlogs(); err != nil {
 		t.Errorf("Blogs.List returned an error: %s", err)
@@ -288,6 +303,8 @@ func testListBlogs(t *testing.T, c *adminserver.Client) {
 		if listedBlogs, err := c.ListBlogs(); err != nil {
 			t.Errorf("Blogs.List returned an error after creating %d blogs", 1+i)
 		} else {
+			sort.Sort(SortBySlug(listedBlogs))
+
 			for j := 0; j <= i; j++ {
 				verifyBlog(t, listedBlogs[j], blogs[j].Slug, blogs[j].DisplayName)
 			}
