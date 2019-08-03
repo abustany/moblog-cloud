@@ -3,4 +3,5 @@
 /migratedb
 /sql/bindata.go
 /tools
+/vendor
 /worker
