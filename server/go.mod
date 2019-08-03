@@ -9,7 +9,9 @@ require (
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/securecookie v1.1.1
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
 	github.com/lib/pq v1.1.0
+	github.com/mattes/migrate v3.0.1+incompatible
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/pkg/errors v0.8.1

@@ -1,4 +1,6 @@
 /adminserver
 /gitserver
-/worker
+/migratedb
+/sql/bindata.go
 /tools
+/worker
