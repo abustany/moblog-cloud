@@ -41,5 +41,4 @@ flushdb:
 test:
 	go test -count=1 ./...
 
-	@echo "Previous test run was against a real database, running again with MemoryUserStore"
-	[ -n "${DB_URL}" ] && DB_URL="" go test -count=1 ./...
+	if [ -n "${DB_URL}" ]; then DB_URL="" go test -count=1 ./...; fi
