@@ -23,6 +23,7 @@ func main() {
 	dbURL := flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used.")
 	cookieSignKeyString := flag.String("cookieSignKey", "", "Key used to sign cookies sent to users (64 hex encoded bytes). Auto generated if left empty.")
 	cookieCryptKeyString := flag.String("cookieCryptKey", "", "Key used to encrypt cookies sent to users (32 hex encoded bytes). Auto generated if left empty")
+	redisSessionURL := flag.String("redisSessionURL", "", "Redis URL of the server to use for storing sessions (if not specified, sessions are kept in memory only)")
 
 	flag.Parse()
 
@@ -44,7 +45,17 @@ func main() {
 		log.Fatalf("Error while creating user store: %s", err)
 	}
 
-	sessionStore, _ := sessionstore.NewMemorySessionStore()
+	var sessionStore sessionstore.SessionStore
+
+	if *redisSessionURL != "" {
+		sessionStore, err = sessionstore.NewRedisSessionStore(*redisSessionURL)
+	} else {
+		sessionStore, err = sessionstore.NewMemorySessionStore()
+	}
+
+	if err != nil {
+		log.Fatalf("Error while creating session store: %s", err)
+	}
 
 	s, err := adminserver.New(*baseAPIPath, secureCookie, userStore, sessionStore)
 
