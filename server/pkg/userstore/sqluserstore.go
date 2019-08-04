@@ -255,10 +255,6 @@ func (s *SQLUserStore) AuthenticateUser(username, password string) (bool, error)
 		return false, errors.Wrap(err, "Error while hashing password")
 	}
 
-	if err != nil {
-		return false, errors.Wrap(err, "Error while authenticating user")
-	}
-
 	return bytes.Equal(hash, dbHash), nil
 }
 
