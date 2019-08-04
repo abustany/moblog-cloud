@@ -46,7 +46,11 @@ func main() {
 
 	sessionStore, _ := sessionstore.NewMemorySessionStore()
 
-	s := adminserver.New(*baseAPIPath, secureCookie, userStore, sessionStore)
+	s, err := adminserver.New(*baseAPIPath, secureCookie, userStore, sessionStore)
+
+	if err != nil {
+		log.Fatalf("Error while creating adminserver: %s", err)
+	}
 
 	log.Printf("Listening on %s", *listenAddress)
 	err = http.ListenAndServe(*listenAddress, s)

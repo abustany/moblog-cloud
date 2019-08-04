@@ -278,7 +278,7 @@ type Server struct {
 	sessionStore sessionstore.SessionStore
 }
 
-func New(basePath string, secureCookie *securecookie.SecureCookie, userStore userstore.UserStore, sessionStore sessionstore.SessionStore) *Server {
+func New(basePath string, secureCookie *securecookie.SecureCookie, userStore userstore.UserStore, sessionStore sessionstore.SessionStore) (*Server, error) {
 	s := Server{
 		router:       mux.NewRouter(),
 		secureCookie: secureCookie,
@@ -287,8 +287,14 @@ func New(basePath string, secureCookie *securecookie.SecureCookie, userStore use
 	}
 
 	rpcServer := rpc.NewServer()
-	rpcServer.RegisterService(&usersService{userStore, sessionStore}, "Users")
-	rpcServer.RegisterService(&blogsService{userStore}, "Blogs")
+	if err := rpcServer.RegisterService(&usersService{userStore, sessionStore}, "Users"); err != nil {
+		return nil, errors.Wrap(err, "Error while registering users service")
+	}
+
+	if err := rpcServer.RegisterService(&blogsService{userStore}, "Blogs"); err != nil {
+		return nil, errors.Wrap(err, "Error while registering blogs service")
+	}
+
 	rpcServer.RegisterCodec(rpcJson.NewCodec(), "application/json")
 
 	router := s.router
@@ -309,7 +315,7 @@ func New(basePath string, secureCookie *securecookie.SecureCookie, userStore use
 			io.WriteString(w, "Not found")
 		})))
 
-	return &s
+	return &s, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
