@@ -15,6 +15,7 @@ func testSessionStore(t *testing.T, s sessionstore.SessionStore) {
 	}
 
 	t.Run("Set Get Delete", withStore(testSetGetDelete))
+	t.Run("Expiration", withStore(testExpiration))
 }
 
 func testSetGetDelete(t *testing.T, store sessionstore.SessionStore) {
@@ -84,6 +85,30 @@ func testSetGetDelete(t *testing.T, store sessionstore.SessionStore) {
 	} else {
 		if s != nil {
 			t.Errorf("Get after delete should return a nil session")
+		}
+	}
+}
+
+func testExpiration(t *testing.T, store sessionstore.SessionStore) {
+	const expireAfter = 100 * time.Millisecond
+
+	session := sessionstore.Session{
+		Sid:      "session",
+		Expires:  time.Now().Add(expireAfter),
+		Username: "user",
+	}
+
+	if err := store.Set(session); err != nil {
+		t.Fatalf("Error while saving session in Redis: %s", err)
+	}
+
+	time.Sleep(3 * expireAfter)
+
+	if s, err := store.Get(session.Sid); err != nil {
+		t.Errorf("Error while retrieving expired session: %s", err)
+	} else {
+		if s != nil {
+			t.Errorf("Get after expiration time should return nil")
 		}
 	}
 }
