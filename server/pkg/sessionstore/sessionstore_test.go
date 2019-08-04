@@ -43,8 +43,16 @@ func testSetGetDelete(t *testing.T, store sessionstore.SessionStore) {
 			if s == nil {
 				t.Errorf("Get on an existing session returned nil")
 			} else {
-				if *s != expected {
-					t.Errorf("Retrieving session doesn't match, got %v, expected %v", *s, expected)
+				if s.Sid != expected.Sid {
+					t.Errorf("Session ID does not match: expected %s, got %s", expected.Sid, s.Sid)
+				}
+
+				if !s.Expires.Equal(expected.Expires) {
+					t.Errorf("Session expire time does not match: expected %v, got %v", expected.Expires, s.Expires)
+				}
+
+				if s.Username != expected.Username {
+					t.Errorf("Session username does not match: expected %s, got %s", expected.Username, s.Username)
 				}
 			}
 		}
