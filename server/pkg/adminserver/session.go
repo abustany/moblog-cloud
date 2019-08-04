@@ -53,6 +53,8 @@ func sessionFromRequest(sc *securecookie.SecureCookie, sessionStore sessionstore
 	authCookie, err := r.Cookie(AuthCookieName)
 
 	if err == http.ErrNoCookie {
+		log.Printf("No authentication cookie found")
+
 		return nil, nil
 	}
 
@@ -63,6 +65,8 @@ func sessionFromRequest(sc *securecookie.SecureCookie, sessionStore sessionstore
 	var decoded AuthCookie
 
 	if err := sc.Decode(AuthCookieName, authCookie.Value, &decoded); err != nil {
+		log.Printf("Error while decoding secure cookie: %s", err)
+
 		// Probably wrong keys
 		return nil, nil
 	}
@@ -71,6 +75,12 @@ func sessionFromRequest(sc *securecookie.SecureCookie, sessionStore sessionstore
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error while retrieving session %s", decoded.SessionID)
+	}
+
+	if session != nil {
+		log.Printf("Associated to session %s for user %s", decoded.SessionID, session.Username)
+	} else {
+		log.Printf("No session found with ID %s", decoded.SessionID)
 	}
 
 	return session, nil
