@@ -297,10 +297,10 @@ func New(basePath string, secureCookie *securecookie.SecureCookie, userStore use
 		router = router.PathPrefix(basePath).Subrouter()
 	}
 
-	router.Methods("POST").Path("/login").HandlerFunc(s.loginHandler)
-	router.Methods("POST").Path("/logout").Handler(WithSession(secureCookie, sessionStore, true, http.HandlerFunc(s.logoutHandler)))
+	router.Methods("POST").Path("/login").Handler(middlewares.WithLogging(http.HandlerFunc(s.loginHandler)))
+	router.Methods("POST").Path("/logout").Handler(middlewares.WithLogging(WithSession(secureCookie, sessionStore, true, http.HandlerFunc(s.logoutHandler))))
 
-	router.Methods("POST").Handler(WithSession(secureCookie, sessionStore, false, rpcServer))
+	router.Methods("POST").Handler(middlewares.WithLogging(WithSession(secureCookie, sessionStore, false, rpcServer)))
 
 	s.router.
 		PathPrefix("/").
