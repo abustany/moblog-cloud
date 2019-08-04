@@ -1,4 +1,5 @@
-.PHONY: first build migrate adminserver gitserver worker migratedb flushdb test
+.PHONY: first build migrate adminserver gitserver worker migratedb flushdb test \
+	docker-adminserver docker-gitserver docker-migratedb docker-worker
 
 first: build
 
@@ -7,15 +8,31 @@ build: adminserver gitserver migratedb worker
 adminserver:
 	go build github.com/abustany/moblog-cloud/cmd/adminserver
 
+docker-adminserver:
+	go mod vendor
+	docker build -t moblog-cloud/adminserver:latest -f docker/adminserver.dockerfile .
+
 gitserver:
 	go build github.com/abustany/moblog-cloud/cmd/gitserver
+
+docker-gitserver:
+	go mod vendor
+	docker build -t moblog-cloud/gitserver:latest -f docker/gitserver.dockerfile .
 
 worker:
 	go build github.com/abustany/moblog-cloud/cmd/worker
 
+docker-worker:
+	go mod vendor
+	docker build -t moblog-cloud/worker:latest -f docker/worker.dockerfile .
+
 migratedb: tools/go-bindata
 	cd sql && ../tools/go-bindata -pkg sql .
 	go build github.com/abustany/moblog-cloud/cmd/migratedb
+
+docker-migratedb:
+	go mod vendor
+	docker build -t moblog-cloud/migratedb:latest -f docker/migratedb.dockerfile .
 
 migrate: tools/migrate-bin
 	@sh -c "[ -z \"$${DB_URL}\" ] && echo Set DB_URL environment variable to the Postgres URL before running this command && exit 1 || true"
