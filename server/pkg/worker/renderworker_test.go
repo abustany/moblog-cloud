@@ -141,7 +141,7 @@ Hello world!
 func waitForFile(filename string, timeout time.Duration) error {
 	start := time.Now()
 
-	for time.Now().Sub(start) < timeout {
+	for time.Since(start) < timeout {
 		_, err := os.Stat(filename)
 
 		if os.IsNotExist(err) {
