@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 type Lock struct {
