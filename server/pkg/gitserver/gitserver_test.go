@@ -208,7 +208,7 @@ func testPush(t *testing.T, ctx Context) {
 	if job == nil {
 		t.Errorf("Push did not trigger a job")
 	} else {
-		if data, ok := job.Data.(*jobs.RenderJob); !ok {
+		if data, ok := job.Data.(jobs.RenderJob); !ok {
 			t.Errorf("Job data is not a RenderJob")
 		} else {
 			if data.Username != ctx.username {

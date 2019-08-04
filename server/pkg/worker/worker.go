@@ -98,8 +98,8 @@ func (w *Worker) consumeOneJob() error {
 	}
 
 	switch jobData := job.Data.(type) {
-	case *jobs.RenderJob:
-		err = w.renderBlog(ctx, jobData)
+	case jobs.RenderJob:
+		err = w.renderBlog(ctx, &jobData)
 	default:
 		return errors.Errorf("Unknown job type: %v", job.Data)
 	}

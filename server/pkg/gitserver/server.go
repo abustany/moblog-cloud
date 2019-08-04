@@ -382,7 +382,7 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 			Repository: repository,
 		}
 
-		if err := s.jobQueue.Post(&renderJob, renderJobTTR); err != nil {
+		if err := s.jobQueue.Post(renderJob, renderJobTTR); err != nil {
 			log.Printf("Error while posting render job for %s/%s: %s", username, repository, err)
 		}
 	}
