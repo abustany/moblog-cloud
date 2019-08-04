@@ -323,7 +323,7 @@ func (s *Server) serveInfoRefsHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-git-"+serviceName+"-advertisement")
 	w.Header().Set("Cache-Control", "no-cache")
 
-	writeGitPacket(w, "# service=git-"+serviceName+"\n")
+	_ = writeGitPacket(w, "# service=git-"+serviceName+"\n")
 	io.WriteString(w, "0000")
 
 	stderr, err := runGitService(r.Context(), nil, w, repoPath, serviceName, "--advertise-refs")
