@@ -9,12 +9,12 @@ import (
 	"github.com/abustany/moblog-cloud/pkg/workqueue"
 )
 
-var listenAddress = flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
-var repositoryBase = flag.String("repositoryBase", "", "Base path where user repositories are stored")
-var adminServerURL = flag.String("adminServer", "", "URL to the admin server")
-var redisJobQueueURL = flag.String("redisJobQueue", "", "URL to the Redis server to use for the job queue")
-
 func main() {
+	listenAddress := flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
+	repositoryBase := flag.String("repositoryBase", "", "Base path where user repositories are stored")
+	adminServerURL := flag.String("adminServer", "", "URL to the admin server")
+	redisJobQueueURL := flag.String("redisJobQueue", "", "URL to the Redis server to use for the job queue")
+
 	flag.Parse()
 
 	if *repositoryBase == "" {

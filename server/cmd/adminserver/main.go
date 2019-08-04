@@ -17,13 +17,13 @@ import (
 	"github.com/abustany/moblog-cloud/pkg/userstore"
 )
 
-var listenAddress = flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
-var baseAPIPath = flag.String("baseAPIPath", "", "Path under which to serve the API")
-var dbURL = flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used.")
-var cookieSignKeyString = flag.String("cookieSignKey", "", "Key used to sign cookies sent to users (64 hex encoded bytes). Auto generated if left empty.")
-var cookieCryptKeyString = flag.String("cookieCryptKey", "", "Key used to encrypt cookies sent to users (32 hex encoded bytes). Auto generated if left empty")
-
 func main() {
+	listenAddress := flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
+	baseAPIPath := flag.String("baseAPIPath", "", "Path under which to serve the API")
+	dbURL := flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used.")
+	cookieSignKeyString := flag.String("cookieSignKey", "", "Key used to sign cookies sent to users (64 hex encoded bytes). Auto generated if left empty.")
+	cookieCryptKeyString := flag.String("cookieCryptKey", "", "Key used to encrypt cookies sent to users (32 hex encoded bytes). Auto generated if left empty")
+
 	flag.Parse()
 
 	cookieSignKey := ensureKey(*cookieSignKeyString, "signing", 64)

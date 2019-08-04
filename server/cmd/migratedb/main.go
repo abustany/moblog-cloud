@@ -12,9 +12,9 @@ import (
 	"github.com/abustany/moblog-cloud/sql"
 )
 
-var dbURL = flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used.")
-
 func main() {
+	dbURL := flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used.")
+
 	flag.Parse()
 
 	if *dbURL == "" {
