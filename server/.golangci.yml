@@ -1,0 +1,20 @@
+run:
+  skip-files:
+    - sql/bindata.go
+
+linters:
+  enable:
+    - bodyclose
+    - goimports
+    - misspell
+  disable:
+    - gochecknoglobals
+    - lll
+    - maligned
+    - prealloc
+    - typecheck
+    - unused
+
+linters-settings:
+  errcheck:
+    ignore: fmt:.*,io:WriteString

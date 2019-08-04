@@ -39,6 +39,7 @@ flushdb:
 	psql -f sql/flush_db.sql ${DB_URL}
 
 test:
+	which golangci-lint >/dev/null 2>&1 && golangci-lint run
 	go test -count=1 ./...
 
 	if [ -n "${DB_URL}" ]; then DB_URL="" go test -count=1 ./...; fi
