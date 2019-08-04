@@ -2,7 +2,7 @@
 
 first: build
 
-build: adminserver gitserver worker
+build: adminserver gitserver migratedb worker
 
 adminserver:
 	go build github.com/abustany/moblog-cloud/cmd/adminserver
