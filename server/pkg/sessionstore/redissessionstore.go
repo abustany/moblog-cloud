@@ -31,7 +31,7 @@ func (s *RedisSessionStore) Set(session Session) error {
 		return errors.Wrap(err, "Error while encoding session data")
 	}
 
-	if err := s.client.Set(redisKeyPrefixSessions+session.Sid, data, session.Expires.Sub(time.Now())).Err(); err != nil {
+	if err := s.client.Set(redisKeyPrefixSessions+session.Sid, data, time.Until(session.Expires)).Err(); err != nil {
 		return errors.Wrap(err, "Error while saving session into Redis")
 	}
 
