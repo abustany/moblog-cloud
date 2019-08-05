@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/gorilla/securecookie"
 
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
+	"github.com/abustany/moblog-cloud/pkg/netscapecookies"
 	"github.com/abustany/moblog-cloud/pkg/sessionstore"
 	"github.com/abustany/moblog-cloud/pkg/userstore"
 )
@@ -65,7 +67,13 @@ func SaveAdminClientAuthCookieToFile(t *testing.T, client *adminserver.Client, p
 		t.Fatalf("Error while retrieving auth cookie from admin client: %s", err)
 	}
 
-	if err := ioutil.WriteFile(path, []byte("Set-Cookie: "+authCookie.String()+"\n"), 0600); err != nil {
+	buffer := bytes.Buffer{}
+
+	if err := netscapecookies.WriteCookie(&buffer, authCookie); err != nil {
+		t.Fatalf("Error while serializing cookie: %s", err)
+	}
+
+	if err := ioutil.WriteFile(path, buffer.Bytes(), 0600); err != nil {
 		t.Fatalf("Error while writing auth cookie to file: %s", err)
 	}
 }
