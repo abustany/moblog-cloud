@@ -99,9 +99,10 @@ func (w *Worker) consumeOneJob() error {
 
 	switch jobData := job.Data.(type) {
 	case jobs.RenderJob:
+		log.Printf("Handling render job %+v", jobData)
 		err = w.renderBlog(ctx, &jobData)
 	default:
-		return errors.Errorf("Unknown job type: %v", job.Data)
+		return errors.Errorf("Unknown job type: %+v", job.Data)
 	}
 
 	if err != nil {
