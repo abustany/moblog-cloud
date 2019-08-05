@@ -367,7 +367,7 @@ func (s *Server) serveGitServiceHTTP(w http.ResponseWriter, r *http.Request, ser
 
 		renderJob := jobs.RenderJob{
 			Username:   session.username,
-			AuthCookie: session.authCookie.String(),
+			AuthCookie: *session.authCookie,
 			Repository: repository,
 		}
 

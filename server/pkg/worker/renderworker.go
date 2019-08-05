@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/abustany/moblog-cloud/pkg/adminserver"
 	"github.com/abustany/moblog-cloud/pkg/jobs"
+	"github.com/abustany/moblog-cloud/pkg/netscapecookies"
 	"github.com/abustany/moblog-cloud/pkg/userstore"
 )
 
@@ -33,6 +35,14 @@ func (w *Worker) renderBlog(ctx context.Context, job *jobs.RenderJob) error {
 		return errors.Wrap(err, "Error while creating adminserver client")
 	}
 
+	if err := adminClient.SetAuthCookie(&job.AuthCookie); err != nil {
+		return errors.Wrap(err, "Error while setting auth cookie on client")
+	}
+
+	if err := adminClient.RefreshSession(); err != nil {
+		return errors.Wrap(err, "Error while refreshing client session")
+	}
+
 	blog, err := adminClient.GetUserBlog(job.Username, job.Repository)
 
 	if err != nil {
@@ -41,7 +51,7 @@ func (w *Worker) renderBlog(ctx context.Context, job *jobs.RenderJob) error {
 
 	authCookieFile := path.Join(w.workDir, "auth_cookie.txt")
 
-	if err := ioutil.WriteFile(authCookieFile, []byte("Set-Cookie: "+job.AuthCookie+"\n"), 0600); err != nil {
+	if err := w.writeAuthCookieFile(adminClient, authCookieFile); err != nil {
 		return errors.Wrap(err, "Error while writing auth cookie file")
 	}
 
@@ -65,6 +75,45 @@ func (w *Worker) renderBlog(ctx context.Context, job *jobs.RenderJob) error {
 
 	if err := w.uploadHTMLFiles(ctx, job.Username, blog.Slug); err != nil {
 		return errors.Wrap(err, "Error while uploading generated files")
+	}
+
+	return nil
+}
+
+func (w *Worker) writeAuthCookieFile(adminClient *adminserver.Client, authCookieFile string) error {
+	authCookie, err := adminClient.AuthCookie()
+
+	if err != nil {
+		return errors.Wrap(err, "Error while retrieving auth cookie from admin client")
+	}
+
+	if authCookie == nil {
+		return errors.New("Admin client has no auth cookie")
+	}
+
+	buffer := bytes.Buffer{}
+
+	if err := netscapecookies.WriteCookie(&buffer, authCookie); err != nil {
+		return errors.Wrap(err, "Error while serializing admin server cookie")
+	}
+
+	// Serialize another copy of this cookie, but for the git server
+
+	gitAuthCookie := *authCookie
+	parsedGitServerURL, err := url.Parse(w.gitServerURL)
+
+	if err != nil {
+		return errors.Wrap(err, "Error while parsing Git server URL")
+	}
+
+	gitAuthCookie.Domain = parsedGitServerURL.Host
+
+	if err := netscapecookies.WriteCookie(&buffer, &gitAuthCookie); err != nil {
+		return errors.Wrap(err, "Error while serializing git server cookie")
+	}
+
+	if err := ioutil.WriteFile(authCookieFile, buffer.Bytes(), 0600); err != nil {
+		return errors.Wrap(err, "Error while writing auth cookie file")
 	}
 
 	return nil
