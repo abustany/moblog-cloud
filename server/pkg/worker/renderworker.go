@@ -225,6 +225,8 @@ func (w *Worker) runHugo(ctx context.Context, configFilePath string) error {
 }
 
 func (w *Worker) uploadHTMLFiles(ctx context.Context, username, slug string) error {
+	log.Printf("Uploading files to %s", w.blogOutputURL)
+
 	sourceDir := path.Join(w.workDir, resultDirectory)
 	bucket, err := blob.OpenBucket(ctx, w.blogOutputURL)
 

@@ -107,6 +107,8 @@ func (w *Worker) consumeOneJob() error {
 
 	if err != nil {
 		log.Printf("Job %s failed: %s", job.ID, err)
+	} else {
+		log.Printf("Job %s succeeded", job.ID)
 	}
 
 	return nil
