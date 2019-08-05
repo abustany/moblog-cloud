@@ -21,7 +21,7 @@ import (
 	"github.com/abustany/moblog-cloud/pkg/workqueue"
 )
 
-func makeJarWithCookie(t *testing.T, serverURL string, cookie *http.Cookie) http.CookieJar {
+func makeJarWithCookie(t *testing.T, serverURL string, cookie http.Cookie) http.CookieJar {
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 
 	if err != nil {
@@ -34,7 +34,11 @@ func makeJarWithCookie(t *testing.T, serverURL string, cookie *http.Cookie) http
 		t.Fatalf("Error while parsing server URL: %s", err)
 	}
 
-	jar.SetCookies(parsedURL, []*http.Cookie{cookie})
+	// Erase the domain, it looks like Go's HTTP client will respect the port in
+	// it, and adminserver.Client.AuthCookie() erases it.
+	cookie.Domain = ""
+
+	jar.SetCookies(parsedURL, []*http.Cookie{&cookie})
 
 	return jar
 }
@@ -101,7 +105,7 @@ func TestGitService(t *testing.T) {
 	}
 
 	httpClient := &http.Client{
-		Jar: makeJarWithCookie(t, adminServer.URL, authCookie),
+		Jar: makeJarWithCookie(t, adminServer.URL, *authCookie),
 	}
 
 	workDir := testutils.TempDir(t, "gitserver-workdir")

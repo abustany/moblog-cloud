@@ -1,10 +1,12 @@
 package adminserver
 
 import (
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/publicsuffix"
@@ -18,6 +20,12 @@ import (
 type Client struct {
 	url    string
 	client *rpcclient.Client
+
+	// Value of type http.Cookie. We keep this one cached manually because we
+	// need the full cookie (not just the name and value as returned by the HTTP
+	// client's cookie jar) to return in AuthCookie(), so that it can for example
+	// be serialized to a netscape cookie file that curl can use.
+	authCookie atomic.Value
 }
 
 func NewClient(url string) (*Client, error) {
@@ -35,27 +43,65 @@ func NewClient(url string) (*Client, error) {
 	rpcClient := rpcclient.New(url)
 	rpcClient.Client = httpClient
 
-	return &Client{url, rpcClient}, nil
+	c := &Client{
+		url:    url,
+		client: rpcClient,
+	}
+
+	c.resetCachedAuthCookie()
+
+	return c, nil
 }
 
 func (c *Client) AuthCookie() (*http.Cookie, error) {
-	parsedUrl, err := url.Parse(c.url)
+	authCookie := c.authCookie.Load().(http.Cookie)
 
-	if err != nil {
-		return nil, errors.Wrap(err, "Error while parsing server url")
+	if authCookie.Name == "" {
+		return nil, nil
 	}
 
-	for _, cookie := range c.client.Client.Jar.Cookies(parsedUrl) {
-		if cookie.Name == AuthCookieName {
-			return cookie, nil
+	return &authCookie, nil
+}
+
+func (c *Client) setCachedAuthCookie(cookie *http.Cookie) error {
+	parsedURL, err := url.Parse(c.url)
+
+	if err != nil {
+		return errors.Wrap(err, "Error while parsing client URL")
+	}
+
+	cookieCopy := *cookie
+
+	if cookieCopy.Domain == "" {
+		// Strip the port (if any) from the domain
+		if strings.Contains(parsedURL.Host, ":") {
+			host, _, err := net.SplitHostPort(parsedURL.Host)
+
+			if err != nil {
+				return errors.Wrap(err, "Error while parsing URL host")
+			}
+
+			cookieCopy.Domain = host
+		} else {
+			cookieCopy.Domain = parsedURL.Host
 		}
 	}
 
-	return nil, nil
+	if cookieCopy.Path == "" {
+		cookieCopy.Path = parsedURL.Path
+	}
+
+	c.authCookie.Store(cookieCopy)
+
+	return nil
+}
+
+func (c *Client) resetCachedAuthCookie() {
+	c.authCookie.Store(http.Cookie{})
 }
 
 func (c *Client) SetAuthCookie(cookie *http.Cookie) error {
-	if cookie.Name != AuthCookieName {
+	if cookie != nil && cookie.Name != AuthCookieName {
 		return errors.New("Invalid cookie name")
 	}
 
@@ -65,7 +111,18 @@ func (c *Client) SetAuthCookie(cookie *http.Cookie) error {
 		return errors.Wrap(err, "Error while parsing server url")
 	}
 
+	if cookie == nil {
+		resetCookie := ResetAuthCookie()
+		c.client.Client.Jar.SetCookies(parsedURL, []*http.Cookie{&resetCookie})
+		c.resetCachedAuthCookie()
+		return nil
+	}
+
 	c.client.Client.Jar.SetCookies(parsedURL, []*http.Cookie{cookie})
+
+	if err := c.setCachedAuthCookie(cookie); err != nil {
+		return errors.Wrap(err, "Error while caching auth cookie")
+	}
 
 	return nil
 }
@@ -85,7 +142,16 @@ func (c *Client) Login(username, password string) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
+		c.resetCachedAuthCookie()
 		return errors.Errorf("Invalid username or password (status code %d)", res.StatusCode)
+	}
+
+	for _, cookie := range res.Cookies() {
+		if cookie.Name == AuthCookieName {
+			if err := c.setCachedAuthCookie(cookie); err != nil {
+				return errors.Wrap(err, "Error while caching auth cookie")
+			}
+		}
 	}
 
 	return nil
@@ -103,6 +169,8 @@ func (c *Client) Logout() error {
 	if res.StatusCode != http.StatusOK {
 		return errors.Wrapf(err, "Logout request returned status %d", res.StatusCode)
 	}
+
+	c.resetCachedAuthCookie()
 
 	return nil
 }
