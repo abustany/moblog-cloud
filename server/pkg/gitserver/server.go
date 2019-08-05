@@ -7,15 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"time"
-
-	"golang.org/x/net/publicsuffix"
 
 	"github.com/gorilla/mux"
 
@@ -62,14 +59,6 @@ func userSessionFromRequest(r *http.Request, adminServerURL *url.URL) (*userSess
 	if err != nil {
 		return nil, errors.Wrap(err, "Error while decoding auth cookie")
 	}
-
-	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Error while creating cookie jar")
-	}
-
-	jar.SetCookies(adminServerURL, []*http.Cookie{authCookie})
 
 	adminClient, err := adminserver.NewClient(adminServerURL.String())
 
