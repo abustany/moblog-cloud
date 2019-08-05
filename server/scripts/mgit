@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -e
+
+git_dir=$(git rev-parse --git-dir)
+cookie_file="$git_dir/info/login_cookie.txt"
+
+case "$1" in
+	login)
+		server="$2"
+		username="$3"
+		password="$4"
+
+		if [ -z "$server" -o -z "$username" -o -z "$password" ]; then
+			echo "Usage: $0 login SERVER USERNAME PASSWORD"
+			echo ""
+			echo "Logs in to the Moblog server, and stores a cookie file in the git directory."
+			echo ""
+			echo "SERVER is the URL of the adminserver, like http://adminserver.test:8080."
+			echo "If the API is deployed under a prefix, it should be appended to the server URL."
+			exit 1
+		fi
+
+
+		if ! curl -f -c "$cookie_file" -d "username=$username" -d "password=$password" "$server/login"; then
+			echo "Login failed :-("
+			exit 1
+		fi
+
+		echo "Logged in! Cookie JAR is stored in $cookie_file"
+		;;
+	*)
+		export GIT_TERMINAL_PROMPT=0
+		exec git -c "http.cookieFile=$cookie_file" $@
+		;;
+esac
