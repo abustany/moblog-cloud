@@ -5,6 +5,7 @@ import (
 	"log"
 
 	_ "gocloud.dev/blob/fileblob"
+	_ "gocloud.dev/blob/s3blob"
 
 	"github.com/abustany/moblog-cloud/pkg/worker"
 	"github.com/abustany/moblog-cloud/pkg/workqueue"
