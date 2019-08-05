@@ -303,8 +303,12 @@ func New(basePath string, secureCookie *securecookie.SecureCookie, userStore use
 		router = router.PathPrefix(basePath).Subrouter()
 	}
 
-	router.Methods("POST").Path("/login").Handler(middlewares.WithLogging(http.HandlerFunc(s.loginHandler)))
-	router.Methods("POST").Path("/logout").Handler(middlewares.WithLogging(WithSession(secureCookie, sessionStore, true, http.HandlerFunc(s.logoutHandler))))
+	withSession := func(requiresAuth bool, h http.Handler) http.Handler {
+		return WithSession(secureCookie, sessionStore, requiresAuth, h)
+	}
+
+	router.Methods("POST").Path("/login").Handler(middlewares.WithLogging(withSession(false, http.HandlerFunc(s.loginHandler))))
+	router.Methods("POST").Path("/logout").Handler(middlewares.WithLogging(withSession(false, http.HandlerFunc(s.logoutHandler))))
 
 	router.Methods("POST").Handler(middlewares.WithLogging(WithSession(secureCookie, sessionStore, false, rpcServer)))
 
@@ -322,6 +326,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
+func sessionExpiryTime() time.Time {
+	return time.Now().Add(30 * 24 * time.Hour)
+}
+
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -332,26 +340,40 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
 
-	authenticated, err := s.userStore.AuthenticateUser(username, password)
+	var session sessionstore.Session
+	var newSession bool
 
-	if err != nil {
-		log.Printf("Error while authenticating user %s: %s", username, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	// Special case: session refresh with an existing cookie
+	if username == "" && password == "" {
+		if s := SessionFromContext(r.Context()); s != nil {
+			session = *s
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	} else {
+		authenticated, err := s.userStore.AuthenticateUser(username, password)
+
+		if err != nil {
+			log.Printf("Error while authenticating user %s: %s", username, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if !authenticated {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		session = sessionstore.Session{
+			Sid:      sessionstore.GenerateSessionID(),
+			Username: username,
+		}
+
+		newSession = true
 	}
 
-	if !authenticated {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	sessionExpires := time.Now().Add(30 * 24 * time.Hour)
-
-	session := sessionstore.Session{
-		Sid:      sessionstore.GenerateSessionID(),
-		Expires:  sessionExpires,
-		Username: username,
-	}
+	session.Expires = sessionExpiryTime()
 
 	if err := s.sessionStore.Set(session); err != nil {
 		log.Printf("Error while saving session for user %s: %s", username, err)
@@ -359,7 +381,11 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Created new session %s for user %s", session.Sid, username)
+	if newSession {
+		log.Printf("Created new session %s for user %s", session.Sid, session.Username)
+	} else {
+		log.Printf("Refreshed session %s for user %s", session.Sid, session.Username)
+	}
 
 	authCookie, err := EncodeAuthCookie(s.secureCookie, AuthCookie{
 		SessionID: session.Sid,
@@ -371,7 +397,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authCookie.Expires = sessionExpires
+	authCookie.Expires = session.Expires
 
 	http.SetCookie(w, &authCookie)
 	w.WriteHeader(http.StatusOK)

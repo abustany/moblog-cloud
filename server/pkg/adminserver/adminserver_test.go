@@ -4,6 +4,7 @@ import (
 	"net/http/httptest"
 	"sort"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -46,6 +47,8 @@ func TestUserService(t *testing.T) {
 	t.Run("Update a blog", withClient(testUpdateBlog))
 	t.Run("Delete a blog", withClient(testDeleteBlog))
 	t.Run("List blogs", withClient(testListBlogs))
+
+	t.Run("Refresh a session", withClient(testRefreshSession))
 }
 
 func testCreateUser(t *testing.T, c *adminserver.Client) {
@@ -309,5 +312,43 @@ func testListBlogs(t *testing.T, c *adminserver.Client) {
 				verifyBlog(t, listedBlogs[j], blogs[j].Slug, blogs[j].DisplayName)
 			}
 		}
+	}
+}
+
+func testRefreshSession(t *testing.T, c *adminserver.Client) {
+	user := userstore.User{
+		Username: "refresh-me",
+		Password: "imtoohot",
+	}
+
+	if err := c.CreateUser(user); err != nil {
+		t.Fatalf("Error while creating user: %s", err)
+	}
+
+	if err := c.Login(user.Username, user.Password); err != nil {
+		t.Fatalf("Error while logging in: %s", err)
+	}
+
+	authCookie, err := c.AuthCookie()
+
+	if err != nil {
+		t.Fatalf("Error while retrieving auth cookie: %s", err)
+	}
+
+	// Cookie expiration times have a resolution of one second
+	time.Sleep(2 * time.Second)
+
+	if err := c.RefreshSession(); err != nil {
+		t.Errorf("Error while refreshing session: %s", err)
+	}
+
+	refreshedCookie, err := c.AuthCookie()
+
+	if err != nil {
+		t.Fatalf("Error while retrieving refreshed cookie: %s", err)
+	}
+
+	if !authCookie.Expires.Before(refreshedCookie.Expires) {
+		t.Errorf("Refreshed cookie expiration time (%v) is not greater than original cookie expiration time (%v)", refreshedCookie.Expires, authCookie.Expires)
 	}
 }

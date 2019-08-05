@@ -127,7 +127,7 @@ func (c *Client) SetAuthCookie(cookie *http.Cookie) error {
 	return nil
 }
 
-func (c *Client) Login(username, password string) error {
+func (c *Client) login(username, password string) error {
 	values := url.Values{
 		"username": []string{username},
 		"password": []string{password},
@@ -155,6 +155,14 @@ func (c *Client) Login(username, password string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) Login(username, password string) error {
+	return c.login(username, password)
+}
+
+func (c *Client) RefreshSession() error {
+	return c.login("", "")
 }
 
 func (c *Client) Logout() error {
