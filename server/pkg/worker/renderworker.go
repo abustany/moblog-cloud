@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/url"
 	"os"
 	"os/exec"
@@ -264,7 +265,11 @@ func uploadFile(ctx context.Context, bucket *blob.Bucket, key, srcPath string) (
 
 	defer srcFd.Close()
 
-	writer, err := bucket.NewWriter(ctx, key, nil)
+	options := blob.WriterOptions{
+		ContentType: mime.TypeByExtension(path.Ext(srcPath)),
+	}
+
+	writer, err := bucket.NewWriter(ctx, key, &options)
 
 	if err != nil {
 		return errors.Wrap(err, "Error while creating writer")
