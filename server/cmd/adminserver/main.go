@@ -20,7 +20,7 @@ import (
 func main() {
 	listenAddress := flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
 	baseAPIPath := flag.String("baseAPIPath", "", "Path under which to serve the API")
-	dbURL := flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used.")
+	dbURL := flag.String("db", "", "URL to the PostgreSQL server. If not set, the DB_URL environment variable is used. If the value is \"memory\", a non-persistent, in-memory user store is used.")
 	cookieSignKeyString := flag.String("cookieSignKey", "", "Key used to sign cookies sent to users (64 hex encoded bytes). Auto generated if left empty.")
 	cookieCryptKeyString := flag.String("cookieCryptKey", "", "Key used to encrypt cookies sent to users (32 hex encoded bytes). Auto generated if left empty")
 	redisSessionURL := flag.String("redisSessionURL", "", "Redis URL of the server to use for storing sessions (if not specified, sessions are kept in memory only)")
@@ -39,7 +39,14 @@ func main() {
 		log.Fatal("No database URL set. Use -db or the DB_URL environment variable.")
 	}
 
-	userStore, err := userstore.NewSQLUserStore("postgres", *dbURL)
+	var userStore userstore.UserStore
+	var err error
+
+	if *dbURL == "memory" {
+		userStore, err = userstore.NewMemoryUserStore()
+	} else {
+		userStore, err = userstore.NewSQLUserStore("postgres", *dbURL)
+	}
 
 	if err != nil {
 		log.Fatalf("Error while creating user store: %s", err)
