@@ -1,0 +1,36 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      # circleci/golang:1.12.5
+      - image: circleci/golang@sha256:7ab0c71ce2d353eecf81357470c404379daace661cf3fbcbb0ae98e3c88329fa
+    working_directory: ~/moblog-cloud
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - "v1-go-mod"
+      - run:
+          name: Build
+          command: make
+          working_directory: ~/moblog-cloud/server
+      - run:
+          name: Install Hugo
+          command: |-
+            set -e
+
+            mkdir ~/hugo && cd ~/hugo
+            HUGO_VERSION=0.56.3
+            HUGO_TGZ_SHA256=e77aafdb1b9c7442a5c4dd32c03443d8ac578cc838704b975686ec0d87797907
+            wget https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_${HUGO_VERSION}_Linux-64bit.tar.gz
+            echo "${HUGO_TGZ_SHA256}  hugo_${HUGO_VERSION}_Linux-64bit.tar.gz" | sha256sum -c
+            tar xf hugo_${HUGO_VERSION}_Linux-64bit.tar.gz
+            echo PATH="$HOME/hugo:${PATH}" >> $BASH_ENV
+      - run:
+          name: Test
+          command: make test
+          working_directory: ~/moblog-cloud/server
+      - save_cache:
+          key: "v1-go-mod"
+          paths: "/go/pkg/mod"
