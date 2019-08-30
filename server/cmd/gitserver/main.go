@@ -11,6 +11,7 @@ import (
 
 func main() {
 	listenAddress := flag.String("listen", "127.0.0.1:8080", "Address to listen on, of the form IP:PORT")
+	baseAPIPath := flag.String("baseAPIPath", "", "Path under which to serve the API")
 	repositoryBase := flag.String("repositoryBase", "", "Base path where user repositories are stored")
 	adminServerURL := flag.String("adminServer", "", "URL to the admin server")
 	redisJobQueueURL := flag.String("redisJobQueue", "", "URL to the Redis server to use for the job queue")
@@ -47,7 +48,7 @@ func main() {
 		log.Fatalf("Error while creating job queue: %s", err)
 	}
 
-	s, err := gitserver.New(*repositoryBase, *adminServerURL, jobQueue)
+	s, err := gitserver.New(*baseAPIPath, *repositoryBase, *adminServerURL, jobQueue)
 
 	if err != nil {
 		log.Fatalf("Error while creating gitserver: %s", err)

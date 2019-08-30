@@ -99,7 +99,7 @@ func sessionFromContext(ctx context.Context) *userSession {
 	return nil
 }
 
-func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
+func New(basePath, baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, error) {
 	adminServerURLParsed, err := url.Parse(adminServerURL)
 
 	if err != nil {
@@ -113,7 +113,13 @@ func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, err
 		jobQueue:       jobQueue,
 	}
 
-	repoRouter := s.router.PathPrefix("/{" + urlVarUsername + ":" + validIDStringRE + "}/{" + urlVarRepository + ":" + validIDStringRE + "}").Subrouter()
+	router := s.router
+
+	if basePath != "" {
+		router = router.PathPrefix(basePath).Subrouter()
+	}
+
+	repoRouter := router.PathPrefix("/{" + urlVarUsername + ":" + validIDStringRE + "}/{" + urlVarRepository + ":" + validIDStringRE + "}").Subrouter()
 
 	repoRouter.
 		Methods("GET").
@@ -130,7 +136,7 @@ func New(baseDir, adminServerURL string, jobQueue workqueue.Queue) (*Server, err
 		Path("/git-receive-pack").
 		Handler(middlewares.WithLogging(s.withValidRepository(http.HandlerFunc(s.serveReceivePackHTTP))))
 
-	s.router.
+	router.
 		PathPrefix("/").
 		Handler(middlewares.WithLogging(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
