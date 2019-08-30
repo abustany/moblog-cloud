@@ -33,3 +33,35 @@ On the server side, we have three components:
 [1] For some examples, see [Chopsticks](https://chopsticks.bustany.org/),
 [Caramba](https://caramba.bustany.org/), [Salam](https://salam.bustany.org/) or
 [Ni Hao](https://nihao.bustany.org/).
+
+## Deployment
+
+There are two main options to deploy moblog-cloud. Both require at least a Redis
+server for storing sessions, and a PostgreSQL database for storing user/blog
+information.
+
+### Small scale: Omnibus deployment 🚌
+
+moblog-cloud builds an `omnibus` binary that groups all the server-side
+components as well as the admin UI into a single static binary. The generated
+blogs can be stored in either Amazon S3 or on the local filesystem. In the
+latter case `omnibus` will also serve the generated blogs.
+
+The following URLs are exposed when running the `omnibus` binary:
+
+- `/api`: JSON-RPC API, accessed by the admin UI as well as other clients like
+  the mobile application
+- `/git`: Git HTTP smart protocol, used for cloning/updating the blogs by Git
+  clients like the mobile application, or the `scripts/mgit` Git wrapper
+- `/admin`: Admin web application, that allows users to register and create new
+  blogs. Publishing content to a blog via the admin UI is at the moment not
+  supported and must be done using the mobile application, or manually by
+  pushing Hugo-formatted markdown files in the repository's `content/post`
+  directory.
+- `/`: Serves the blogs, if the blog output directory is set to a local folder
+
+### Large scale: Kubernetes 🌐
+
+For a more resilient/scalable deployment, moblog-cloud can be deployed on
+Kubernetes. See the [deployment README](deployment/README.md) for more
+information.
