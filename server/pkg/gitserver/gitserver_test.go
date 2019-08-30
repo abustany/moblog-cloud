@@ -70,7 +70,7 @@ func TestGitService(t *testing.T) {
 
 	defer jobQueue.Stop()
 
-	gitServerHandler, err := gitserver.New(repositoriesDir, adminServer.URL, jobQueue)
+	gitServerHandler, err := gitserver.New("/", repositoriesDir, adminServer.URL, jobQueue)
 
 	if err != nil {
 		t.Fatalf("Error while creating git server: %s", err)

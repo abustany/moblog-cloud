@@ -38,7 +38,7 @@ func TestRenderBlog(t *testing.T) {
 	repositoriesDir := testutils.TempDir(t, "gitserver-repositories")
 	defer os.RemoveAll(repositoriesDir)
 
-	gitServerHandler, err := gitserver.New(repositoriesDir, adminServer.URL, queue)
+	gitServerHandler, err := gitserver.New("/", repositoriesDir, adminServer.URL, queue)
 
 	if err != nil {
 		t.Fatalf("Error while creating git server: %s", err)
