@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,6 +32,13 @@ type Worker struct {
 }
 
 func New(queue workqueue.Queue, adminServerURL, gitServerURL, workDir, themeRepositoryURL, blogOutputURL string) (*Worker, error) {
+	workDir, err := filepath.Abs(workDir)
+
+	if err != nil {
+
+		return nil, errors.Wrap(err, "Could not determine absolute path of work directory")
+	}
+
 	w := &Worker{
 		queue:              queue,
 		adminServerURL:     adminServerURL,
