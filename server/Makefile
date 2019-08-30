@@ -1,5 +1,6 @@
-.PHONY: first build migrate adminserver gitserver worker migratedb flushdb test \
-	docker-adminserver docker-gitserver docker-migratedb docker-worker
+.PHONY: first build migrate adminserver gitserver worker migratedb flushdb omnibus test \
+	docker-adminserver docker-gitserver docker-migratedb docker-worker \
+	clean
 
 first: build
 
@@ -60,3 +61,6 @@ test:
 	go test -count=1 ./...
 
 	if [ -n "${DB_URL}" ]; then DB_URL="" go test -count=1 ./...; fi
+
+clean:
+	rm -rf migrate adminserver gitserver worker migratedb
