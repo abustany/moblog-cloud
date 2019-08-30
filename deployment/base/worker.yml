@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: worker
+        image: moblog-cloud/worker:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis
+              key: redis_url
+        - name: BLOG_BUCKET_URL
+          valueFrom:
+            secretKeyRef:
+              name: blog-bucket
+              key: bucket_url
+        command: [
+          '/home/worker/worker',
+          '-adminServer', 'http://$(ADMINSERVER_SERVICE_NAME)/api',
+          '-gitServer', 'http://$(GITSERVER_SERVICE_NAME)',
+          '-redisJobQueue', '$(REDIS_URL)',
+          '-themeRepository', 'https://github.com/abustany/moblog-blog-theme',
+          '-workDir', '/work',
+          '-blogOutput', '$(BLOG_BUCKET_URL)'
+        ]
+        volumeMounts:
+        - name: work
+          mountPath: /work
+      volumes:
+      - name: work
+        emptyDir: {}

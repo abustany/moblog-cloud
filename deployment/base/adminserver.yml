@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminserver
+spec:
+  selector:
+    matchLabels:
+      app: adminserver
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: adminserver
+    spec:
+      containers:
+      - name: adminserver
+        image: moblog-cloud/adminserver:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DB_URL
+          valueFrom:
+            secretKeyRef:
+              name: sql
+              key: db_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis
+              key: redis_url
+        - name: COOKIE_SIGN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: adminserver-cookies
+              key: cookie_sign_key
+        - name: COOKIE_CRYPT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: adminserver-cookies
+              key: cookie_crypt_key
+        command: [
+          '/home/adminserver/adminserver',
+          '-listen', '0.0.0.0:8080',
+          '-baseAPIPath', '/api',
+          '-redisSessionURL', '$(REDIS_URL)',
+          '-cookieSignKey', '$(COOKIE_SIGN_KEY)',
+          '-cookieCryptKey', '$(COOKIE_CRYPT_KEY)'
+        ]
+        ports:
+        - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminserver
+  labels:
+    app: adminserver
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: adminserver

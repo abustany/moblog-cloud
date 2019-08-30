@@ -1,0 +1,112 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blogserver-nginx-config
+data:
+  blogs.conf: |-
+    server {
+        listen 80;
+        listen [::]:80;
+
+        server_name localhost;
+
+        # Admin UI
+        location = /admin {
+            return 302 $scheme://$http_host/admin/;
+        }
+
+        location = /admin/favicon.ico {
+            return 404;
+        }
+
+        location ^~ /admin/ {
+            alias /admin-ui/;
+            try_files $uri /admin/index.html;
+        }
+
+        # API
+        location ^~ /api {
+            proxy_pass http://dev-adminserver/api;
+        }
+
+        # User blogs: user/blog
+
+        # Redirect /foo/bar to /foo/bar/ (but not /foo/bar.baz to /foo/bar.baz/)
+        location ~ ^/([^/]+)/([^/\.]+)$ {
+            return 302 $scheme://$http_host/$1/$2/;
+        }
+
+        location ~ ^/[^/]+/[^/]+ {
+            # Rewrite /foo/bar/ to /foo/bar/index.html
+            rewrite ^(.*)/$ /blogs$1/index.html break;
+
+            # Prefix the rest with /blogs
+            rewrite ^(.*)$ /blogs$1 break;
+
+            proxy_set_header Host $http_host;
+            proxy_pass http://dev-minio:9000;
+        }
+
+        # Fallback
+        location / {
+            return 404;
+        }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blogserver
+spec:
+  selector:
+    matchLabels:
+      app: blogserver
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: blogserver
+    spec:
+      containers:
+      - name: blogserver
+        # 1.17.2-alpine
+        image: nginx@sha256:482ead44b2203fa32b3390abdaf97cbdc8ad15c07fb03a3e68d7c35a19ad7595
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/conf.d
+        - name: admin-ui
+          mountPath: /admin-ui
+      volumes:
+      - name: config
+        configMap:
+          name: blogserver-nginx-config
+      - name: admin-ui
+        emptyDir: {}
+      initContainers:
+      - name: install-admin-ui
+        image: moblog-cloud/admin-ui:latest
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'cp -a /app/* /admin-ui/']
+        volumeMounts:
+        - name: admin-ui
+          mountPath: /admin-ui
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blogserver
+  labels:
+    app: blogserver
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: blogserver

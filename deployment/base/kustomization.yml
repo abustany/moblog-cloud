@@ -1,0 +1,34 @@
+resources:
+- adminserver.yml
+- gitserver.yml
+- worker.yml
+
+secretGenerator:
+- name: sql
+  env: sql.properties
+  type: Opaque
+- name: redis
+  env: redis.properties
+  type: Opaque
+- name: adminserver-cookies
+  env: adminserver-cookies.properties
+  type: Opaque
+- name: blog-bucket
+  env: blog-bucket.properties
+  type: Opaque
+
+vars:
+- name: ADMINSERVER_SERVICE_NAME
+  objref:
+    kind: Service
+    name: adminserver
+    apiVersion: v1
+  fieldref:
+    fieldpath: metadata.name
+- name: GITSERVER_SERVICE_NAME
+  objref:
+    kind: Service
+    name: gitserver
+    apiVersion: v1
+  fieldref:
+    fieldpath: metadata.name

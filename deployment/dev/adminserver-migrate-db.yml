@@ -1,0 +1,19 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminserver
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: migrate-db
+        image: moblog-cloud/migratedb:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DB_URL
+          valueFrom:
+            secretKeyRef:
+              name: sql
+              key: db_url
+        command: ['/home/migratedb/migratedb']

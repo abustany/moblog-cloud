@@ -1,0 +1,34 @@
+bases:
+- ../base
+
+namePrefix: dev-
+
+resources:
+- blogserver.yml
+- minio.yml
+- nfs-server.yml
+- postgres.yml
+- redis.yml
+
+secretGenerator:
+- name: sql
+  env: sql.properties
+  type: Opaque
+  behavior: replace
+- name: redis
+  env: redis.properties
+  type: Opaque
+  behavior: replace
+- name: adminserver-cookies
+  env: adminserver-cookies.properties
+  type: Opaque
+  behavior: replace
+- name: blog-bucket
+  env: blog-bucket.properties
+  type: Opaque
+  behavior: replace
+
+patchesStrategicMerge:
+- adminserver-migrate-db.yml
+- blog-bucket-access-keys.yml
+- gitserver-create-bucket.yml

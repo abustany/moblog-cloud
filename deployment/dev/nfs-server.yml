@@ -1,0 +1,89 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-server-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-server
+spec:
+  selector:
+    matchLabels:
+      app: nfs-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+    spec:
+      containers:
+      - name: nfs-server
+        image: apnar/nfs-ganesha@sha256:0f2861cdaeb7c21700cbef6b854f869b690f55b13c8f7eb280963ab7c77a13d7
+        ports:
+        - containerPort: 2049
+        - containerPort: 38465
+        - containerPort: 38466
+        - containerPort: 38467
+        - containerPort: 662
+        - containerPort: 111
+        - containerPort: 111
+          protocol: UDP
+        volumeMounts:
+        - name: nfs-persistent-storage
+          mountPath: /export
+      volumes:
+      - name: nfs-persistent-storage
+        persistentVolumeClaim:
+          claimName: nfs-server-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-server
+spec:
+  ports:
+  - port: 2049
+    name: nfs
+  - port: 38465
+    name: nfs-38465
+  - port: 38466
+    name: nfs-38466
+  - port: 38467
+    name: nfs-38467
+  - port: 662
+    name: nfs-662
+  - port: 111
+    name: nfs-111
+  - port: 111
+    name: nfs-111-udp
+    protocol: UDP
+  selector:
+    app: nfs-server
+  clusterIP: None
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-server-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  nfs:
+    path: /
+    server: dev-nfs-server # assumes that the prefix in kustomization.yml is set to dev

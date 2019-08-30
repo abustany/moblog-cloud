@@ -1,0 +1,90 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  # We don't want to have more than one postgres instance running at the same time
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        # 11.4-alpine
+        image: postgres@sha256:077793cc0ed31fd0568ce468d85d0843b8dea37c9ef74eb81b4ccf0fe9539e2e
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sql
+              key: postgres_password
+
+        # The variables below are used by the readiness probe
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sql
+              key: postgres_password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: sql
+              key: db_user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sql
+              key: db_password
+        readinessProbe:
+          exec:
+            command: ['sh', '-e', '-c', '
+              while true; do psql -h 127.0.0.1 -U postgres -w -c "SELECT 1;" && break || sleep 1; done;
+
+              psql -h 127.0.0.1 -U postgres -w -tc "SELECT 1 FROM pg_roles WHERE rolname=''${DB_USER}''" | grep -q 1 && exit 0;
+              psql -h 127.0.0.1 -U postgres -w -c "CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD ''${DB_PASSWORD}'';";
+              psql -h 127.0.0.1 -U postgres -w -c "CREATE DATABASE ${DB_USER} WITH OWNER ${DB_USER} ENCODING UTF8;";
+              psql -h 127.0.0.1 -U postgres -w -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_USER} TO ${DB_USER};";
+              ']
+        volumeMounts:
+        - name: postgres-persistent-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-persistent-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+  - port: 5432
+  selector:
+    app: postgres

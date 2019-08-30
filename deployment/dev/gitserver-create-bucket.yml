@@ -1,0 +1,38 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitserver
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: create-bucket
+        # RELEASE.2019-07-31T19-17-35Z
+        image: minio/mc@sha256:d345d452fa06df51d4ec60059198ceb7f1360282bd9c67fe19e61cd112e8d804
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: blog-bucket
+              key: access_key
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: blog-bucket
+              key: secret_key
+        - name: BUCKET_NAME
+          valueFrom:
+            secretKeyRef:
+              name: blog-bucket
+              key: bucket_name
+        command: [
+          'sh', '-e', '-c',
+        'mc config host add blogs http://dev-minio:9000 ${ACCESS_KEY} ${SECRET_KEY};
+
+          if ! mc ls blogs | grep -q ${BUCKET_NAME}; then
+            mc mb blogs/${BUCKET_NAME};
+            mc policy download blogs/${BUCKET_NAME};
+          fi'
+        ]
