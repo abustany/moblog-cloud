@@ -1,5 +1,6 @@
 # Moblog cloud
 
+[![CircleCI](https://circleci.com/gh/abustany/moblog-cloud.svg?style=svg)](https://circleci.com/gh/abustany/moblog-cloud)
 [![Go Report Card](https://goreportcard.com/badge/github.com/abustany/moblog-cloud)](https://goreportcard.com/report/github.com/abustany/moblog-cloud)
 
 This is the "platformization" of a homebrewd blogging system I've been using
