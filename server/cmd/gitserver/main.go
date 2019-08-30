@@ -29,6 +29,7 @@ func main() {
 	var err error
 
 	if *redisJobQueueURL == "" {
+		log.Printf("Warning: using an in-memory work queue, render jobs will not be triggered")
 		jobQueue, err = workqueue.NewMemoryQueue()
 
 		if err == nil {
