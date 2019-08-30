@@ -1,6 +1,7 @@
 run:
   skip-files:
     - sql/bindata.go
+    - omnibus-adminui
 
 linters:
   enable:
