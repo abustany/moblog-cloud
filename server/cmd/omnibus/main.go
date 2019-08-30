@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elazarl/go-bindata-assetfs"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
