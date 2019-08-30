@@ -1,6 +1,8 @@
 /adminserver
 /gitserver
 /migratedb
+/omnibus
+/omnibus-adminui
 /sql/bindata.go
 /tools
 /vendor

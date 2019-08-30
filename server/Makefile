@@ -4,7 +4,7 @@
 
 first: build
 
-build: adminserver gitserver migratedb worker
+build: adminserver gitserver migratedb worker omnibus
 
 adminserver:
 	go build github.com/abustany/moblog-cloud/cmd/adminserver
@@ -35,6 +35,17 @@ docker-migratedb:
 	go mod vendor
 	docker build -t moblog-cloud/migratedb:latest -f docker/migratedb.dockerfile .
 
+omnibus-adminui/index.html:
+	rm -fr $(dir $@)
+	mkdir -p $(dir $@)
+	# Pipe through tee to avoid fancy colors and terminal escape sequences
+	OUTPUT_DIR=$(shell cd $(dir $@) && pwd) PUBLIC_PATH="/admin/" yarn --non-interactive --cwd=../admin-ui run build | tee
+
+omnibus: omnibus-adminui/index.html
+	echo "package adminui" > omnibus-adminui/init.go
+	cd omnibus-adminui && ../tools/go-bindata -pkg adminui ./...
+	go build github.com/abustany/moblog-cloud/cmd/omnibus
+
 migrate: tools/migrate-bin
 	@sh -c "[ -z \"$${DB_URL}\" ] && echo Set DB_URL environment variable to the Postgres URL before running this command && exit 1 || true"
 	./tools/migrate-bin -database "${DB_URL}" -path sql up
@@ -63,4 +74,4 @@ test:
 	if [ -n "${DB_URL}" ]; then DB_URL="" go test -count=1 ./...; fi
 
 clean:
-	rm -rf migrate adminserver gitserver worker migratedb
+	rm -rf migrate adminserver gitserver worker migratedb omnibus omnibus-adminui

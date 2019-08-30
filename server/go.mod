@@ -3,6 +3,7 @@ module github.com/abustany/moblog-cloud
 go 1.12
 
 require (
+	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/go-redis/redis v6.15.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.5.0
 	github.com/gorilla/mux v1.7.3
